@@ -84,20 +84,16 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
   return (
     <div className="flex items-center gap-1 p-2 bg-card border-b border-border shadow-sm">
       {/* Left Sidebar Control */}
-      {!leftSidebarOpen && (
-        <>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleLeftSidebar}
-            className="h-8 w-8 p-0"
-            title="Show Notes (Ctrl/⌘+K)"
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-          <Separator orientation="vertical" className="h-6" />
-        </>
-      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onToggleLeftSidebar}
+        className="h-8 w-8 p-0"
+        title={leftSidebarOpen ? "Hide sidebar" : "Show sidebar"}
+      >
+        <Menu className="h-4 w-4" />
+      </Button>
+      <Separator orientation="vertical" className="h-6" />
       {/* Text Formatting */}
       <div className="flex items-center gap-1">
         <Button
