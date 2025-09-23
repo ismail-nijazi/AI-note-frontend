@@ -77,9 +77,9 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
 
   return (
     <div className="flex items-center gap-1 p-2 bg-card border-b border-border shadow-sm">
-      {/* Sidebar Controls */}
-      <div className="flex items-center gap-1">
-        {!leftSidebarOpen && (
+      {/* Left Sidebar Control */}
+      {!leftSidebarOpen && (
+        <>
           <Button
             variant="ghost"
             size="sm"
@@ -89,22 +89,8 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           >
             <PanelLeft className="h-4 w-4" />
           </Button>
-        )}
-        {!rightSidebarOpen && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleRightSidebar}
-            className="h-8 w-8 p-0"
-            title="Show AI Chat (Ctrl/⌘+/)"
-          >
-            <PanelRight className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
-      {(!leftSidebarOpen || !rightSidebarOpen) && (
-        <Separator orientation="vertical" className="h-6" />
+          <Separator orientation="vertical" className="h-6" />
+        </>
       )}
       {/* Text Formatting */}
       <div className="flex items-center gap-1">
@@ -321,6 +307,25 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           <Redo2 className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* Spacer to push right sidebar toggle to the right */}
+      <div className="flex-1" />
+
+      {/* Right Sidebar Control */}
+      {!rightSidebarOpen && (
+        <>
+          <Separator orientation="vertical" className="h-6" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleRightSidebar}
+            className="h-8 w-8 p-0"
+            title="Show AI Chat (Ctrl/⌘+/)"
+          >
+            <PanelRight className="h-4 w-4" />
+          </Button>
+        </>
+      )}
     </div>
   );
 };
