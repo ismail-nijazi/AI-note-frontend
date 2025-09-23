@@ -8,6 +8,12 @@ import { useAIStore } from '@/state/useAIStore';
 
 const Index = () => {
   const [toolbarCallbacks, setToolbarCallbacks] = useState<any>({});
+  
+  // Animation states for smooth transitions
+  const [leftSidebarAnimating, setLeftSidebarAnimating] = useState(false);
+  const [rightSidebarAnimating, setRightSidebarAnimating] = useState(false);
+  const [leftSidebarVisible, setLeftSidebarVisible] = useState(false);
+  const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
 
   const {
     leftSidebarOpen,
@@ -30,6 +36,44 @@ const Index = () => {
     loadWorkspace();
     loadAI();
   }, [loadWorkspace, loadAI]);
+
+  // Handle left sidebar animations
+  useEffect(() => {
+    if (leftSidebarOpen && !leftSidebarVisible) {
+      // Opening
+      setLeftSidebarVisible(true);
+      setLeftSidebarAnimating(false); // Reset animation state for opening
+    } else if (!leftSidebarOpen && leftSidebarVisible) {
+      // Closing
+      setLeftSidebarAnimating(true);
+      setTimeout(() => {
+        setLeftSidebarVisible(false);
+        setLeftSidebarAnimating(false);
+      }, 300); // Match animation duration
+    }
+  }, [leftSidebarOpen, leftSidebarVisible]);
+
+  // Handle right sidebar animations
+  useEffect(() => {
+    if (rightSidebarOpen && !rightSidebarVisible) {
+      // Opening
+      setRightSidebarVisible(true);
+      setRightSidebarAnimating(false); // Reset animation state for opening
+    } else if (!rightSidebarOpen && rightSidebarVisible) {
+      // Closing
+      setRightSidebarAnimating(true);
+      setTimeout(() => {
+        setRightSidebarVisible(false);
+        setRightSidebarAnimating(false);
+      }, 300); // Match animation duration
+    }
+  }, [rightSidebarOpen, rightSidebarVisible]);
+
+  // Initialize sidebar visibility on mount
+  useEffect(() => {
+    setLeftSidebarVisible(leftSidebarOpen);
+    setRightSidebarVisible(rightSidebarOpen);
+  }, []);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -64,8 +108,10 @@ const Index = () => {
       {/* Body with sidebars and main content */}
       <div className="flex flex-1 min-h-0">
         {/* Left Sidebar */}
-        {leftSidebarOpen && (
-          <div className="animate-slide-in-left">
+        {leftSidebarVisible && (
+          <div className={`${
+            leftSidebarOpen ? 'animate-slide-in-left' : 'animate-slide-out-left'
+          }`}>
             <LeftSidebar 
               width={leftSidebarWidth}
               onResize={setLeftSidebarWidth}
@@ -79,8 +125,10 @@ const Index = () => {
         </div>
 
         {/* Right Sidebar */}
-        {rightSidebarOpen && (
-          <div className="animate-slide-in-right">
+        {rightSidebarVisible && (
+          <div className={`${
+            rightSidebarOpen ? 'animate-slide-in-right' : 'animate-slide-out-right'
+          }`}>
             <RightSidebarChat 
               width={rightSidebarWidth}
               onResize={setRightSidebarWidth}
