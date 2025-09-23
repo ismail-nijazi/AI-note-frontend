@@ -15,8 +15,8 @@ import {
   Undo2, 
   Redo2,
   Unlink,
-  PanelLeft,
-  PanelRight,
+  Menu,
+  MessageSquare,
   User,
   Settings,
   LogOut,
@@ -93,7 +93,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
             className="h-8 w-8 p-0"
             title="Show Notes (Ctrl/⌘+K)"
           >
-            <PanelLeft className="h-4 w-4" />
+            <Menu className="h-4 w-4" />
           </Button>
           <Separator orientation="vertical" className="h-6" />
         </>
@@ -314,33 +314,36 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
         </Button>
       </div>
 
-      {/* Spacer to push sidebar controls and user profile to the right */}
+      {/* Spacer to push AI Chat and user profile to the right */}
       <div className="flex-1" />
+
+      {/* AI Chat Toggle */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onToggleRightSidebar}
+        className="h-8 px-3 flex items-center gap-2"
+        title={rightSidebarOpen ? "Hide AI chat" : "Show AI chat"}
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        <MessageSquare className="h-4 w-4" />
+        <span className="text-sm">AI Chat</span>
+      </Button>
+
+      <Separator orientation="vertical" className="h-6 mx-2" />
 
       {/* Sidebar Controls */}
       <div className="flex items-center gap-1">
-        {/* Left Sidebar Toggle */}
+        {/* Left Sidebar Toggle - Hamburger Menu */}
         <Button
           variant="ghost"
           size="sm"
           onClick={onToggleLeftSidebar}
           className="h-8 w-8 p-0"
-          title={leftSidebarOpen ? "Hide left sidebar" : "Show left sidebar"}
+          title={leftSidebarOpen ? "Hide sidebar" : "Show sidebar"}
           onMouseDown={(e) => e.preventDefault()}
         >
-          <PanelLeft className="h-4 w-4" />
-        </Button>
-
-        {/* Right Sidebar Toggle */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggleRightSidebar}
-          className="h-8 w-8 p-0"
-          title={rightSidebarOpen ? "Hide AI chat" : "Show AI chat"}
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          <PanelRight className="h-4 w-4" />
+          <Menu className="h-4 w-4" />
         </Button>
 
         <Separator orientation="vertical" className="h-6 mx-2" />
