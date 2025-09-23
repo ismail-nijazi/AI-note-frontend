@@ -5,7 +5,11 @@ import { useAIStore } from '@/state/useAIStore';
 import { NoteBox } from './NoteBox';
 import { GlobalToolbar } from './GlobalToolbar';
 
-export const Canvas: React.FC = () => {
+interface CanvasProps {
+  onToolbarCallbacksChange?: (callbacks: any) => void;
+}
+
+export const Canvas: React.FC<CanvasProps> = ({ onToolbarCallbacksChange }) => {
   const {
     noteBoxes,
     selectedBoxId,
@@ -26,6 +30,13 @@ export const Canvas: React.FC = () => {
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const [toolbarCallbacks, setToolbarCallbacks] = useState<any>({});
+
+  // Notify parent when toolbar callbacks change
+  useEffect(() => {
+    if (onToolbarCallbacksChange) {
+      onToolbarCallbacksChange(toolbarCallbacks);
+    }
+  }, [toolbarCallbacks, onToolbarCallbacksChange]);
 
   // Load data on mount
   useEffect(() => {
