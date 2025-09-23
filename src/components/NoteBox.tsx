@@ -303,8 +303,13 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
+    
+    // Remove any existing context menus
+    const existingMenus = document.querySelectorAll('.context-menu-noteBox');
+    existingMenus.forEach(menu => menu.remove());
+    
     const menu = document.createElement('div');
-    menu.className = 'fixed bg-card border border-border rounded shadow-lg p-1 z-50';
+    menu.className = 'context-menu-noteBox fixed bg-card border border-border rounded shadow-lg p-1 z-50';
     menu.style.left = `${e.clientX}px`;
     menu.style.top = `${e.clientY}px`;
 
