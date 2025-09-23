@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Canvas } from '@/components/Canvas';
 import { LeftSidebar } from '@/components/sidebar/LeftSidebar';
 import { RightSidebarChat } from '@/components/sidebar/RightSidebarChat';
@@ -23,47 +23,11 @@ const Index = () => {
     loadFromStorage: loadAI,
   } = useAIStore();
 
-  // Animation states
-  const [leftSidebarAnimating, setLeftSidebarAnimating] = useState(false);
-  const [rightSidebarAnimating, setRightSidebarAnimating] = useState(false);
-  const [leftSidebarVisible, setLeftSidebarVisible] = useState(leftSidebarOpen);
-  const [rightSidebarVisible, setRightSidebarVisible] = useState(rightSidebarOpen);
-
   // Load data on mount
   useEffect(() => {
     loadWorkspace();
     loadAI();
   }, [loadWorkspace, loadAI]);
-
-  // Handle left sidebar animation
-  useEffect(() => {
-    if (leftSidebarOpen && !leftSidebarVisible) {
-      setLeftSidebarVisible(true);
-      setLeftSidebarAnimating(true);
-      setTimeout(() => setLeftSidebarAnimating(false), 300);
-    } else if (!leftSidebarOpen && leftSidebarVisible) {
-      setLeftSidebarAnimating(true);
-      setTimeout(() => {
-        setLeftSidebarVisible(false);
-        setLeftSidebarAnimating(false);
-      }, 300);
-    }
-  }, [leftSidebarOpen, leftSidebarVisible]);
-
-  // Handle right sidebar animation
-  useEffect(() => {
-    if (rightSidebarOpen && !rightSidebarVisible) {
-      setRightSidebarVisible(true);
-      setRightSidebarAnimating(true);
-      setTimeout(() => setRightSidebarAnimating(false), 300);
-    } else if (!rightSidebarOpen && rightSidebarVisible) {
-      setRightSidebarAnimating(true);
-      setTimeout(() => {
-        setRightSidebarVisible(false);
-        setRightSidebarAnimating(false);
-      }, 300);
-    }
-  }, [rightSidebarOpen, rightSidebarVisible]);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -97,8 +61,8 @@ const Index = () => {
       {/* Body with sidebars and main content */}
       <div className="flex flex-1 min-h-0">
         {/* Left Sidebar */}
-        {leftSidebarVisible && (
-          <div className={`${leftSidebarOpen && !leftSidebarAnimating ? 'animate-slide-in-left' : 'animate-slide-out-left'}`}>
+        {leftSidebarOpen && (
+          <div className="animate-slide-in-left">
             <LeftSidebar 
               width={leftSidebarWidth}
               onResize={setLeftSidebarWidth}
@@ -112,8 +76,8 @@ const Index = () => {
         </div>
 
         {/* Right Sidebar */}
-        {rightSidebarVisible && (
-          <div className={`${rightSidebarOpen && !rightSidebarAnimating ? 'animate-slide-in-right' : 'animate-slide-out-right'}`}>
+        {rightSidebarOpen && (
+          <div className="animate-slide-in-right">
             <RightSidebarChat 
               width={rightSidebarWidth}
               onResize={setRightSidebarWidth}
