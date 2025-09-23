@@ -187,18 +187,9 @@ export const Canvas: React.FC = () => {
   const currentNote = getCurrentNote();
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      <GlobalToolbar 
-        {...toolbarCallbacks} 
-        leftSidebarOpen={leftSidebarOpen}
-        rightSidebarOpen={rightSidebarOpen}
-        onToggleLeftSidebar={() => useWorkspaceStore.getState().toggleLeftSidebar()}
-        onToggleRightSidebar={() => useAIStore.getState().toggleRightSidebar()}
-      />
-      
-      <div 
-        ref={canvasRef}
-        className="flex-1 relative overflow-hidden cursor-default"
+    <div 
+      ref={canvasRef}
+      className="flex-1 relative overflow-hidden cursor-default bg-background"
         onDoubleClick={handleDoubleClick}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -253,6 +244,5 @@ export const Canvas: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
-  );
+    );
 };

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Canvas } from '@/components/Canvas';
 import { LeftSidebar } from '@/components/sidebar/LeftSidebar';
 import { RightSidebarChat } from '@/components/sidebar/RightSidebarChat';
+import { GlobalToolbar } from '@/components/GlobalToolbar';
 import { useWorkspaceStore } from '@/state/useWorkspaceStore';
 import { useAIStore } from '@/state/useAIStore';
 
@@ -48,27 +49,38 @@ const Index = () => {
   }, [toggleRightSidebar]);
 
   return (
-    <div className="flex h-screen w-full bg-background">
-      {/* Left Sidebar */}
-      {leftSidebarOpen && (
-        <LeftSidebar 
-          width={leftSidebarWidth}
-          onResize={setLeftSidebarWidth}
-        />
-      )}
+    <div className="flex flex-col h-screen w-full bg-background">
+      {/* Global Toolbar - spans full width */}
+      <GlobalToolbar 
+        leftSidebarOpen={leftSidebarOpen}
+        rightSidebarOpen={rightSidebarOpen}
+        onToggleLeftSidebar={toggleLeftSidebar}
+        onToggleRightSidebar={toggleRightSidebar}
+      />
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <Canvas />
+      {/* Body with sidebars and main content */}
+      <div className="flex flex-1 min-h-0">
+        {/* Left Sidebar */}
+        {leftSidebarOpen && (
+          <LeftSidebar 
+            width={leftSidebarWidth}
+            onResize={setLeftSidebarWidth}
+          />
+        )}
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <Canvas />
+        </div>
+
+        {/* Right Sidebar */}
+        {rightSidebarOpen && (
+          <RightSidebarChat 
+            width={rightSidebarWidth}
+            onResize={setRightSidebarWidth}
+          />
+        )}
       </div>
-
-      {/* Right Sidebar */}
-      {rightSidebarOpen && (
-        <RightSidebarChat 
-          width={rightSidebarWidth}
-          onResize={setRightSidebarWidth}
-        />
-      )}
     </div>
   );
 };
