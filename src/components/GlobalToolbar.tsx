@@ -16,11 +16,17 @@ import {
   Redo2,
   Unlink,
   PanelLeft,
-  PanelRight
+  PanelRight,
+  User,
+  Settings,
+  LogOut,
+  HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useBoardStore } from '@/state/useBoardStore';
 
 interface GlobalToolbarProps {
@@ -308,13 +314,44 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
         </Button>
       </div>
 
-      {/* Spacer to push right sidebar toggle to the right */}
+      {/* Spacer to push user profile and right sidebar toggle to the right */}
       <div className="flex-1" />
+
+      {/* User Profile Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
+            <Avatar className="h-7 w-7">
+              <AvatarImage src="/placeholder.svg" alt="User" />
+              <AvatarFallback className="text-xs">U</AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48 bg-popover">
+          <DropdownMenuItem className="cursor-pointer">
+            <User className="h-4 w-4 mr-2" />
+            Profile
+          </DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer">
+            <Settings className="h-4 w-4 mr-2" />
+            Settings
+          </DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer">
+            <HelpCircle className="h-4 w-4 mr-2" />
+            Help & Support
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="cursor-pointer text-destructive">
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Right Sidebar Control */}
       {!rightSidebarOpen && (
         <>
-          <Separator orientation="vertical" className="h-6" />
+          <Separator orientation="vertical" className="h-6 mx-2" />
           <Button
             variant="ghost"
             size="sm"

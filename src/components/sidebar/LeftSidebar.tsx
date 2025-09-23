@@ -366,30 +366,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ width, onResize }) => 
 
       {/* Footer */}
       <div className="p-3 border-t border-border">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-center">
           <span className="text-xs text-muted-foreground">
             Storage: {Math.round(JSON.stringify(workspace).length / 1024)}KB
           </span>
-        </div>
-        <div className="flex gap-1">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleExport}
-            className="flex-1 h-7 text-xs"
-          >
-            <Download className="h-3 w-3 mr-1" />
-            Export
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleImport}
-            className="flex-1 h-7 text-xs"
-          >
-            <Upload className="h-3 w-3 mr-1" />
-            Import
-          </Button>
         </div>
       </div>
 
