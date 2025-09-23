@@ -314,8 +314,37 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
         </Button>
       </div>
 
-      {/* Spacer to push user profile and right sidebar toggle to the right */}
+      {/* Spacer to push sidebar controls and user profile to the right */}
       <div className="flex-1" />
+
+      {/* Sidebar Controls */}
+      <div className="flex items-center gap-1">
+        {/* Left Sidebar Toggle */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggleLeftSidebar}
+          className="h-8 w-8 p-0"
+          title={leftSidebarOpen ? "Hide left sidebar" : "Show left sidebar"}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <PanelLeft className="h-4 w-4" />
+        </Button>
+
+        {/* Right Sidebar Toggle */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggleRightSidebar}
+          className="h-8 w-8 p-0"
+          title={rightSidebarOpen ? "Hide AI chat" : "Show AI chat"}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <PanelRight className="h-4 w-4" />
+        </Button>
+
+        <Separator orientation="vertical" className="h-6 mx-2" />
+      </div>
 
       {/* User Profile Dropdown */}
       <DropdownMenu>
@@ -347,22 +376,6 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {/* Right Sidebar Control */}
-      {!rightSidebarOpen && (
-        <>
-          <Separator orientation="vertical" className="h-6 mx-2" />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleRightSidebar}
-            className="h-8 w-8 p-0"
-            title="Show AI Chat (Ctrl/⌘+/)"
-          >
-            <PanelRight className="h-4 w-4" />
-          </Button>
-        </>
-      )}
     </div>
   );
 };

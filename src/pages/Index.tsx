@@ -62,10 +62,12 @@ const Index = () => {
       <div className="flex flex-1 min-h-0">
         {/* Left Sidebar */}
         {leftSidebarOpen && (
-          <LeftSidebar 
-            width={leftSidebarWidth}
-            onResize={setLeftSidebarWidth}
-          />
+          <div className="animate-slide-in-left">
+            <LeftSidebar 
+              width={leftSidebarWidth}
+              onResize={setLeftSidebarWidth}
+            />
+          </div>
         )}
 
         {/* Main Content */}
@@ -75,10 +77,12 @@ const Index = () => {
 
         {/* Right Sidebar */}
         {rightSidebarOpen && (
-          <RightSidebarChat 
-            width={rightSidebarWidth}
-            onResize={setRightSidebarWidth}
-          />
+          <div className="animate-slide-in-right">
+            <RightSidebarChat 
+              width={rightSidebarWidth}
+              onResize={setRightSidebarWidth}
+            />
+          </div>
         )}
       </div>
     </div>
