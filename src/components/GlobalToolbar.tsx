@@ -332,23 +332,6 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
 
       <Separator orientation="vertical" className="h-6 mx-2" />
 
-      {/* Sidebar Controls */}
-      <div className="flex items-center gap-1">
-        {/* Left Sidebar Toggle - Hamburger Menu */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggleLeftSidebar}
-          className="h-8 w-8 p-0"
-          title={leftSidebarOpen ? "Hide sidebar" : "Show sidebar"}
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          <Menu className="h-4 w-4" />
-        </Button>
-
-        <Separator orientation="vertical" className="h-6 mx-2" />
-      </div>
-
       {/* User Profile Dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
