@@ -339,11 +339,10 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48 bg-popover">
-          <DropdownMenuItem className="cursor-pointer">
-            <User className="h-4 w-4 mr-2" />
-            Profile
-          </DropdownMenuItem>
-          <DropdownMenuItem className="cursor-pointer">
+          <DropdownMenuItem 
+            className="cursor-pointer"
+            onClick={() => window.location.href = '/settings'}
+          >
             <Settings className="h-4 w-4 mr-2" />
             Settings
           </DropdownMenuItem>
