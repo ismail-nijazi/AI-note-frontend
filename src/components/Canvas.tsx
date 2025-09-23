@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useBoardStore } from '@/state/useBoardStore';
 import { useWorkspaceStore } from '@/state/useWorkspaceStore';
+import { useAIStore } from '@/state/useAIStore';
 import { NoteBox } from './NoteBox';
 import { GlobalToolbar } from './GlobalToolbar';
 
@@ -18,7 +19,8 @@ export const Canvas: React.FC = () => {
     saveToStorage,
   } = useBoardStore();
 
-  const { getCurrentNote, updateNote, workspace } = useWorkspaceStore();
+  const { getCurrentNote, updateNote, workspace, leftSidebarOpen } = useWorkspaceStore();
+  const { rightSidebarOpen } = useAIStore();
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isPanning, setIsPanning] = useState(false);
@@ -186,7 +188,13 @@ export const Canvas: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <GlobalToolbar {...toolbarCallbacks} />
+      <GlobalToolbar 
+        {...toolbarCallbacks} 
+        leftSidebarOpen={leftSidebarOpen}
+        rightSidebarOpen={rightSidebarOpen}
+        onToggleLeftSidebar={() => useWorkspaceStore.getState().toggleLeftSidebar()}
+        onToggleRightSidebar={() => useAIStore.getState().toggleRightSidebar()}
+      />
       
       <div 
         ref={canvasRef}

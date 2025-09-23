@@ -14,7 +14,9 @@ import {
   Image, 
   Undo2, 
   Redo2,
-  Unlink
+  Unlink,
+  PanelLeft,
+  PanelRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -38,6 +40,11 @@ interface GlobalToolbarProps {
   onImage?: () => void;
   isFormatActive?: (format: string) => boolean;
   getCurrentFontSize?: () => string;
+  // Sidebar controls
+  leftSidebarOpen?: boolean;
+  rightSidebarOpen?: boolean;
+  onToggleLeftSidebar?: () => void;
+  onToggleRightSidebar?: () => void;
 }
 
 export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
@@ -57,6 +64,10 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
   onImage,
   isFormatActive = () => false,
   getCurrentFontSize = () => 'normal',
+  leftSidebarOpen = true,
+  rightSidebarOpen = true,
+  onToggleLeftSidebar,
+  onToggleRightSidebar,
 }) => {
   const { selectedBoxId, undo, redo, history, historyIndex } = useBoardStore();
 
@@ -66,6 +77,35 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
 
   return (
     <div className="flex items-center gap-1 p-2 bg-card border-b border-border shadow-sm">
+      {/* Sidebar Controls */}
+      <div className="flex items-center gap-1">
+        {!leftSidebarOpen && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleLeftSidebar}
+            className="h-8 w-8 p-0"
+            title="Show Notes (Ctrl/⌘+K)"
+          >
+            <PanelLeft className="h-4 w-4" />
+          </Button>
+        )}
+        {!rightSidebarOpen && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleRightSidebar}
+            className="h-8 w-8 p-0"
+            title="Show AI Chat (Ctrl/⌘+/)"
+          >
+            <PanelRight className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {(!leftSidebarOpen || !rightSidebarOpen) && (
+        <Separator orientation="vertical" className="h-6" />
+      )}
       {/* Text Formatting */}
       <div className="flex items-center gap-1">
         <Button
