@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Canvas } from '@/components/Canvas';
 import { LeftSidebar } from '@/components/sidebar/LeftSidebar';
 import { RightSidebarChat } from '@/components/sidebar/RightSidebarChat';
@@ -8,14 +8,6 @@ import { useAIStore } from '@/state/useAIStore';
 
 const Index = () => {
   const [toolbarCallbacks, setToolbarCallbacks] = useState<any>({});
-  
-  // Animation states for smooth transitions
-  const [leftSidebarClosing, setLeftSidebarClosing] = useState(false);
-  const [rightSidebarClosing, setRightSidebarClosing] = useState(false);
-  
-  // Refs to track timeouts
-  const leftTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const rightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     leftSidebarOpen,
@@ -38,64 +30,6 @@ const Index = () => {
     loadWorkspace();
     loadAI();
   }, [loadWorkspace, loadAI]);
-
-  // Handle left sidebar animations
-  useEffect(() => {
-    // Clear any existing timeout
-    if (leftTimeoutRef.current) {
-      clearTimeout(leftTimeoutRef.current);
-      leftTimeoutRef.current = null;
-    }
-
-    if (!leftSidebarOpen && !leftSidebarClosing) {
-      // Start closing animation
-      setLeftSidebarClosing(true);
-      leftTimeoutRef.current = setTimeout(() => {
-        setLeftSidebarClosing(false);
-        leftTimeoutRef.current = null;
-      }, 300);
-    } else if (leftSidebarOpen && leftSidebarClosing) {
-      // Cancel closing if reopened
-      setLeftSidebarClosing(false);
-    }
-
-    // Cleanup function
-    return () => {
-      if (leftTimeoutRef.current) {
-        clearTimeout(leftTimeoutRef.current);
-        leftTimeoutRef.current = null;
-      }
-    };
-  }, [leftSidebarOpen]);
-
-  // Handle right sidebar animations
-  useEffect(() => {
-    // Clear any existing timeout
-    if (rightTimeoutRef.current) {
-      clearTimeout(rightTimeoutRef.current);
-      rightTimeoutRef.current = null;
-    }
-
-    if (!rightSidebarOpen && !rightSidebarClosing) {
-      // Start closing animation
-      setRightSidebarClosing(true);
-      rightTimeoutRef.current = setTimeout(() => {
-        setRightSidebarClosing(false);
-        rightTimeoutRef.current = null;
-      }, 300);
-    } else if (rightSidebarOpen && rightSidebarClosing) {
-      // Cancel closing if reopened
-      setRightSidebarClosing(false);
-    }
-
-    // Cleanup function
-    return () => {
-      if (rightTimeoutRef.current) {
-        clearTimeout(rightTimeoutRef.current);
-        rightTimeoutRef.current = null;
-      }
-    };
-  }, [rightSidebarOpen]);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -128,37 +62,35 @@ const Index = () => {
       />
 
       {/* Body with sidebars and main content */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left Sidebar */}
-        {(leftSidebarOpen || leftSidebarClosing) && (
-          <div className={`${
-            leftSidebarOpen && !leftSidebarClosing ? 'animate-slide-in-left' : 
-            leftSidebarClosing ? 'animate-slide-out-left' : ''
-          }`}>
+        <div className={`transition-all duration-300 ease-out ${
+          leftSidebarOpen ? 'w-auto' : 'w-0'
+        } overflow-hidden`}>
+          {leftSidebarOpen && (
             <LeftSidebar 
               width={leftSidebarWidth}
               onResize={setLeftSidebarWidth}
             />
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-out">
+        <div className="flex-1 flex flex-col min-w-0">
           <Canvas onToolbarCallbacksChange={setToolbarCallbacks} />
         </div>
 
         {/* Right Sidebar */}
-        {(rightSidebarOpen || rightSidebarClosing) && (
-          <div className={`${
-            rightSidebarOpen && !rightSidebarClosing ? 'animate-slide-in-right' : 
-            rightSidebarClosing ? 'animate-slide-out-right' : ''
-          }`}>
+        <div className={`transition-all duration-300 ease-out ${
+          rightSidebarOpen ? 'w-auto' : 'w-0'
+        } overflow-hidden`}>
+          {rightSidebarOpen && (
             <RightSidebarChat 
               width={rightSidebarWidth}
               onResize={setRightSidebarWidth}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
