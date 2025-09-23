@@ -163,75 +163,61 @@ export const RightSidebarChat: React.FC<RightSidebarChatProps> = ({ width, onRes
 
   return (
     <div 
-      className="flex flex-col h-full bg-card border-l border-border"
+      className="flex flex-col h-full bg-background border-l border-border"
       style={{ width }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-border">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <div>
-            <h3 className="font-semibold text-sm">AI Assistant</h3>
-            {currentNote && (
-              <p className="text-xs text-muted-foreground truncate">
-                {currentNote.title}
-              </p>
-            )}
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-medium">AI Chat</h2>
+        </div>
+        
+        {/* Context Options */}
+        <div className="flex gap-2 mb-3">
+          <Button
+            variant={includeContext ? "default" : "outline"}
+            size="sm"
+            onClick={() => setIncludeContext(!includeContext)}
+            className="text-xs h-7"
+          >
+            Selected content
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-7"
+          >
+            Entire note
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"  
+            className="text-xs h-7"
+          >
+            Note outline only
+          </Button>
+        </div>
+        
+        {currentNote && (
+          <div className="text-xs text-muted-foreground">
+            Working on: <span className="font-medium">{currentNote.title}</span>
           </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => currentNote && clearChatHistory(currentNote.id)}
-            className="h-7 w-7 p-0"
-            title="Clear Chat"
-            disabled={!currentNote || chatHistory.length === 0}
-          >
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={toggleRightSidebar}
-            className="h-7 w-7 p-0"
-            title="Close Sidebar"
-          >
-            <PanelRightClose className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Context Toggle */}
-      <div className="p-3 border-b border-border">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="include-context" className="text-xs">Include Context</Label>
-          <Switch
-            id="include-context"
-            checked={includeContext}
-            onCheckedChange={setIncludeContext}
-          />
-        </div>
-        {includeContext && (
-          <p className="text-xs text-muted-foreground mt-1">
-            AI can see note content and selected text
-          </p>
         )}
       </div>
 
       {/* Quick Actions */}
-      <div className="p-3 border-b border-border">
+      <div className="px-4 pb-4">
         <div className="grid grid-cols-2 gap-2">
-          {quickActions.map(action => (
+          {quickActions.map((action) => (
             <Button
               key={action.command}
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => handleQuickAction(action.command)}
-              className="h-8 text-xs justify-start"
+              className="justify-start text-xs h-8 hover:bg-accent"
               disabled={!currentNote}
             >
-              <action.icon className="h-3 w-3 mr-1" />
+              <action.icon className="mr-2 h-3 w-3" />
               {action.label}
             </Button>
           ))}
@@ -280,29 +266,34 @@ export const RightSidebarChat: React.FC<RightSidebarChatProps> = ({ width, onRes
       </ScrollArea>
 
       {/* Input */}
-      <div className="p-3 border-t border-border">
+      <div className="p-4 border-t border-border">
         <div className="flex gap-2">
           <Textarea
             ref={textareaRef}
-            placeholder={currentNote ? "Ask me anything..." : "Select a note first..."}
+            placeholder={currentNote ? "Ask AI anything or use /commands..." : "Select a note first..."}
             value={currentInput}
             onChange={(e) => setCurrentInput(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isGenerating || !currentNote}
-            className="flex-1 min-h-[60px] max-h-[120px] text-sm resize-none"
+            className="flex-1 min-h-0 resize-none text-sm border-input"
+            rows={1}
           />
           <Button
             onClick={() => handleSendMessage()}
             disabled={!currentInput.trim() || isGenerating || !currentNote}
             size="sm"
-            className="self-end"
+            className="self-end h-8 w-8 p-0"
           >
-            <Send className="h-4 w-4" />
+            {isGenerating ? (
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              <Send className="h-3 w-3" />
+            )}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Press Ctrl/⌘+Enter to send
-        </p>
+        <div className="text-xs text-muted-foreground mt-2 text-center">
+          Press Ctrl+Enter to send
+        </div>
       </div>
 
       {/* Resize Handle */}
@@ -346,23 +337,20 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
   const isUser = message.role === 'user';
   
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`
-        max-w-[85%] rounded-lg p-3 text-sm
-        ${isUser 
-          ? 'bg-primary text-primary-foreground' 
-          : 'bg-muted text-muted-foreground'
-        }
-        ${isStreaming ? 'animate-pulse' : ''}
-      `}>
-        <div className="whitespace-pre-wrap">{message.content}</div>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
+      <div className={`max-w-[85%] ${
+        isUser 
+          ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-sm p-3' 
+          : 'bg-muted rounded-2xl rounded-bl-sm p-3'
+      } ${isStreaming ? 'animate-pulse' : ''}`}>
+        <div className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</div>
         {!isUser && !isStreaming && (
-          <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/20">
+          <div className="flex gap-1 mt-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => onCopy(message.content)}
-              className="h-6 px-2 text-xs"
+              className="h-6 px-2 text-xs hover:bg-background/50"
             >
               <Copy className="h-3 w-3 mr-1" />
               Copy
@@ -371,10 +359,9 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => onInsert(message.content)}
-              className="h-6 px-2 text-xs"
+              className="h-6 px-2 text-xs hover:bg-background/50"
             >
-              <Plus className="h-3 w-3 mr-1" />
-              Insert
+              Regenerate
             </Button>
           </div>
         )}

@@ -207,161 +207,231 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ width, onResize }) => 
 
   return (
     <div 
-      className="flex flex-col h-full bg-card border-r border-border"
+      className="flex flex-col h-full bg-background border-r border-border"
       style={{ width }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-border">
-        <h2 className="font-semibold text-sm">Whiteboard Notes</h2>
-        <div className="flex items-center gap-1">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleCreateCollection}
-            className="h-7 w-7 p-0"
-            title="New Collection"
-          >
-            <FolderPlus className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={toggleLeftSidebar}
-            className="h-7 w-7 p-0"
-            title="Close Sidebar"
-          >
-            <PanelLeftClose className="h-4 w-4" />
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-muted-foreground">Collections</h2>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleCreateCollection}>
+            <Plus className="h-3 w-3" />
           </Button>
         </div>
-      </div>
-
-      {/* Search */}
-      <div className="p-3 border-b border-border">
+        
+        <Button 
+          className="w-full mb-4 bg-primary hover:bg-primary/90"
+          onClick={() => {
+            if (filteredCollections.length > 0) {
+              handleCreateNote(filteredCollections[0].id);
+            } else {
+              handleCreateCollection();
+            }
+          }}
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          New Note
+        </Button>
+        
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search notes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8"
+            className="pl-10 h-8 text-sm"
           />
         </div>
       </div>
 
-      {/* Collections & Notes */}
-      <div className="flex-1 overflow-auto p-2">
-        {filteredCollections.length === 0 ? (
-          <div className="text-center text-muted-foreground text-sm py-8">
-            {searchQuery ? 'No matching notes found' : 'No collections yet'}
+      {/* Quick Access */}
+      <div className="px-4 mb-4">
+        <h3 className="text-sm font-medium text-muted-foreground mb-2">Quick Access</h3>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between p-2 hover:bg-accent rounded-md cursor-pointer">
+            <div className="flex items-center">
+              <FileText className="mr-3 h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">All Notes</span>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {filteredCollections.reduce((total, col) => total + Object.keys(col.notes).length, 0)}
+            </span>
           </div>
-        ) : (
-          <div className="space-y-1">
-            {filteredCollections.map(collection => (
-              <Collapsible
-                key={collection.id}
-                open={expandedCollections.has(collection.id)}
-                onOpenChange={() => toggleCollection(collection.id)}
-              >
-                <div className="flex items-center group">
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="flex-1 justify-start h-8 px-2">
-                      {expandedCollections.has(collection.id) ? 
-                        <ChevronDown className="h-4 w-4 mr-1" /> : 
-                        <ChevronRight className="h-4 w-4 mr-1" />
-                      }
-                      <span className="truncate">{collection.title}</span>
-                    </Button>
-                  </CollapsibleTrigger>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                      >
-                        <MoreHorizontal className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleCreateNote(collection.id)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        New Note
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleRenameCollection(collection.id, collection.title)}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleDeleteCollection(collection.id, collection.title)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+        </div>
+      </div>
 
-                <CollapsibleContent>
-                  <div className="ml-6 space-y-1">
-                    {collection.noteOrder.map(noteId => {
-                      const note = collection.notes[noteId];
-                      if (!note) return null;
-                      
-                      const isActive = workspace.active.noteId === noteId;
-                      const matchesSearch = !searchQuery || 
-                        note.title.toLowerCase().includes(searchQuery.toLowerCase());
-                      
-                      if (!matchesSearch) return null;
-                      
-                      return (
-                        <div key={noteId} className="flex items-center group">
-                          <Button
-                            variant={isActive ? "secondary" : "ghost"}
-                            size="sm"
-                            className="flex-1 justify-start h-7 px-2 text-xs"
-                            onClick={() => handleNoteSelect(collection.id, noteId)}
-                          >
-                            <FileText className="h-3 w-3 mr-2" />
-                            <span className="truncate">{note.title}</span>
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+      {/* Collections & Notes */}
+      <div className="flex-1 overflow-auto">
+        <div className="px-4 space-y-4">
+          {/* Collections */}
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Collections</h3>
+            {filteredCollections.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">No collections yet</p>
+                <Button 
+                  variant="outline" 
+                  onClick={handleCreateCollection}
+                  className="mx-auto"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Collection
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {filteredCollections.map((collection) => {
+                  const isExpanded = expandedCollections.has(collection.id);
+                  const notes = collection.noteOrder
+                    .map(id => collection.notes[id])
+                    .filter(note => note && (
+                      searchQuery === '' || 
+                      note.title.toLowerCase().includes(searchQuery.toLowerCase())
+                    ));
+
+                  return (
+                    <Collapsible
+                      key={collection.id}
+                      open={isExpanded}
+                      onOpenChange={() => toggleCollection(collection.id)}
+                    >
+                      <div className="flex items-center group">
+                        <CollapsibleTrigger className="flex items-center flex-1 p-2 hover:bg-accent rounded-md text-left">
+                          <div className="w-3 h-3 rounded-full bg-primary mr-3"></div>
+                          <span className="flex-1 text-sm">{collection.title}</span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {Object.keys(collection.notes).length}
+                          </span>
+                        </CollapsibleTrigger>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                            >
+                              <MoreHorizontal className="h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleCreateNote(collection.id)}>
+                              <Plus className="mr-2 h-4 w-4" />
+                              Add Note
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleRenameCollection(collection.id, collection.title)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteCollection(collection.id, collection.title)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      <CollapsibleContent>
+                        <div className="ml-6 space-y-1 pt-1">
+                          {notes.map((note) => (
+                            <div key={note.id} className="flex items-center group">
+                              <button
+                                onClick={() => handleNoteSelect(collection.id, note.id)}
+                                className={`flex-1 flex items-center p-2 rounded-md text-left hover:bg-accent ${
+                                  workspace.active.collectionId === collection.id && workspace.active.noteId === note.id
+                                    ? 'bg-accent'
+                                    : ''
+                                }`}
                               >
-                                <MoreHorizontal className="h-3 w-3" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleRenameNote(collection.id, noteId, note.title)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Rename
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => duplicateNote(collection.id, noteId)}>
-                                <Copy className="h-4 w-4 mr-2" />
-                                Duplicate
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleDeleteNote(collection.id, noteId, note.title)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                <FileText className="mr-2 h-4 w-4 text-muted-foreground" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm truncate">{note.title}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(note.updatedAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </button>
+                              
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                                  >
+                                    <MoreHorizontal className="h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleRenameNote(collection.id, note.id, note.title)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Rename
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => duplicateNote(collection.id, note.id)}>
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Duplicate
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleDeleteNote(collection.id, note.id, note.title)}
+                                    className="text-destructive"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          ))}
                         </div>
-                      );
-                    })}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            ))}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Recent Notes */}
+          {filteredCollections.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">Recent Notes</h3>
+              <div className="space-y-1">
+                {filteredCollections
+                  .flatMap(col => Object.values(col.notes).map(note => ({ ...note, collectionId: col.id })))
+                  .sort((a, b) => b.updatedAt - a.updatedAt)
+                  .slice(0, 5)
+                  .map((note) => (
+                    <button
+                      key={note.id}
+                      onClick={() => handleNoteSelect(note.collectionId, note.id)}
+                      className={`w-full flex items-center p-2 rounded-md text-left hover:bg-accent ${
+                        workspace.active.collectionId === note.collectionId && workspace.active.noteId === note.id
+                          ? 'bg-accent'
+                          : ''
+                      }`}
+                    >
+                      <FileText className="mr-3 h-4 w-4 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm truncate">{note.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(note.updatedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {searchQuery && filteredCollections.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No notes found matching "{searchQuery}"</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Footer */}
