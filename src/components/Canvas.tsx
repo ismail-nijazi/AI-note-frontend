@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useBoardStore } from '@/state/useBoardStore';
+import { useWorkspaceStore } from '@/state/useWorkspaceStore';
 import { NoteBox } from './NoteBox';
 import { GlobalToolbar } from './GlobalToolbar';
 
@@ -17,6 +18,8 @@ export const Canvas: React.FC = () => {
     saveToStorage,
   } = useBoardStore();
 
+  const { getCurrentNote, updateNote, workspace } = useWorkspaceStore();
+
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
@@ -27,11 +30,30 @@ export const Canvas: React.FC = () => {
     loadFromStorage();
   }, [loadFromStorage]);
 
-  // Auto-save every 5 seconds
+  // Auto-save current note state
   useEffect(() => {
-    const interval = setInterval(saveToStorage, 5000);
+    const saveCurrentNote = () => {
+      const currentNote = getCurrentNote();
+      if (currentNote && workspace.active.collectionId && workspace.active.noteId) {
+        updateNote(workspace.active.collectionId, workspace.active.noteId, {
+          boxes: noteBoxes.map(box => ({
+            id: box.id,
+            x: box.x,
+            y: box.y,
+            width: box.width,
+            height: box.height,
+            zIndex: box.zIndex,
+            content: box.content,
+          })),
+          zoom: canvasTransform.scale,
+          pan: { x: canvasTransform.x, y: canvasTransform.y },
+        });
+      }
+    };
+
+    const interval = setInterval(saveCurrentNote, 2000); // Save every 2 seconds
     return () => clearInterval(interval);
-  }, [saveToStorage]);
+  }, [noteBoxes, canvasTransform, getCurrentNote, updateNote, workspace.active]);
 
   // Convert screen coordinates to canvas coordinates
   const screenToCanvas = useCallback((screenX: number, screenY: number) => {
@@ -160,8 +182,10 @@ export const Canvas: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
+  const currentNote = getCurrentNote();
+
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <GlobalToolbar {...toolbarCallbacks} />
       
       <div 
@@ -173,6 +197,7 @@ export const Canvas: React.FC = () => {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
+        data-canvas="true"
         style={{
           cursor: isPanning ? 'grabbing' : 'default',
         }}
@@ -208,9 +233,14 @@ export const Canvas: React.FC = () => {
         {noteBoxes.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center text-muted-foreground">
-              <h2 className="text-2xl font-semibold mb-2">Welcome to Whiteboard Notes</h2>
+              <h2 className="text-2xl font-semibold mb-2">
+                {currentNote ? `Note: ${currentNote.title}` : 'Welcome to Whiteboard Notes'}
+              </h2>
               <p className="text-lg">Double-click anywhere to add a note box</p>
               <p className="text-sm mt-2">Scroll to zoom, drag to pan around</p>
+              {!currentNote && (
+                <p className="text-sm mt-4 text-primary">Create a collection and note from the left sidebar to get started</p>
+              )}
             </div>
           </div>
         )}

@@ -41,6 +41,8 @@ interface BoardActions {
   saveToHistory: () => void;
   loadFromStorage: () => void;
   saveToStorage: () => void;
+  loadNote: (boxes: NoteBox[], transform: BoardState['canvasTransform']) => void;
+  clearBoard: () => void;
 }
 
 const defaultContent: Descendant[] = [
@@ -236,5 +238,22 @@ export const useBoardStore = create<BoardState & BoardActions>((set, get) => ({
     } catch (error) {
       console.error('Failed to save to storage:', error);
     }
+  },
+
+  loadNote: (boxes: NoteBox[], transform: BoardState['canvasTransform']) => {
+    set(produce((state: BoardState) => {
+      state.noteBoxes = [...boxes];
+      state.canvasTransform = { ...transform };
+      state.selectedBoxId = null;
+      state.editingBoxId = null;
+    }));
+  },
+
+  clearBoard: () => {
+    set(produce((state: BoardState) => {
+      state.noteBoxes = [];
+      state.selectedBoxId = null;
+      state.editingBoxId = null;
+    }));
   },
 }));
