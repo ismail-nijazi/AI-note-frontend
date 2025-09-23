@@ -11,8 +11,7 @@ import {
   ChevronRight,
   FileText,
   Download,
-  Upload,
-  PanelLeftClose
+  Upload
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -213,26 +212,15 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ width, onResize }) => 
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-border">
         <h2 className="font-semibold text-sm">Whiteboard Notes</h2>
-        <div className="flex items-center gap-1">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleCreateCollection}
-            className="h-7 w-7 p-0"
-            title="New Collection"
-          >
-            <FolderPlus className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={toggleLeftSidebar}
-            className="h-7 w-7 p-0"
-            title="Close Sidebar"
-          >
-            <PanelLeftClose className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleCreateCollection}
+          className="h-7 w-7 p-0"
+          title="New Collection"
+        >
+          <FolderPlus className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Search */}
