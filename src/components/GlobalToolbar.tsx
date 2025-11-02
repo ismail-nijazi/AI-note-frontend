@@ -28,6 +28,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useBoardStore } from '@/state/useBoardStore';
+import { useAuthStore } from '@/state/useAuthStore';
+import { useNavigate } from 'react-router-dom';
 
 interface GlobalToolbarProps {
   onBold?: () => void;
@@ -76,6 +78,13 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
   onToggleRightSidebar,
 }) => {
   const { selectedBoxId, undo, redo, history, historyIndex } = useBoardStore();
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   const hasActiveEditor = !!selectedBoxId;
   const canUndo = historyIndex > 0;
@@ -333,15 +342,24 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
             <Avatar className="h-7 w-7">
-              <AvatarImage src="/placeholder.svg" alt="User" />
-              <AvatarFallback className="text-xs">U</AvatarFallback>
+              <AvatarImage src="/placeholder.svg" alt={user?.name || "User"} />
+              <AvatarFallback className="text-xs">
+                {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
+              </AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48 bg-popover">
+          <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">
+            {user?.name || "User"}
+          </div>
+          <div className="px-2 py-1 text-xs text-muted-foreground">
+            {user?.email || "user@example.com"}
+          </div>
+          <DropdownMenuSeparator />
           <DropdownMenuItem 
             className="cursor-pointer"
-            onClick={() => window.location.href = '/settings'}
+            onClick={() => navigate('/settings')}
           >
             <Settings className="h-4 w-4 mr-2" />
             Settings
@@ -351,7 +369,10 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
             Help & Support
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="cursor-pointer text-destructive">
+          <DropdownMenuItem 
+            className="cursor-pointer text-destructive"
+            onClick={handleLogout}
+          >
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out
           </DropdownMenuItem>
