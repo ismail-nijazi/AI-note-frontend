@@ -688,3 +688,43 @@ export const useBoardStore = create<
 		}
 	},
 }));
+
+socketService.on((msg) => {
+	if (msg.type !== "note:updated") {
+		return;
+	}
+
+	const { noteId, content } = msg;
+	const workspaceState = useWorkspaceStore.getState();
+	if (workspaceState.workspace.active.noteId !== noteId) {
+		return;
+	}
+
+	const boxesSource =
+		Array.isArray((content as any)?.boxes) ? (content as any).boxes : content;
+
+	if (!Array.isArray(boxesSource)) {
+		return;
+	}
+
+	const clonedBoxes = JSON.parse(JSON.stringify(boxesSource));
+	const validIds = new Set(
+		clonedBoxes
+			.map((box: { id?: string }) => box?.id)
+			.filter((id: string | undefined): id is string => typeof id === "string")
+	);
+
+	useBoardStore.setState(
+		produce((state: BoardState) => {
+			state.noteBoxes = clonedBoxes;
+			if (state.selectedBoxId && !validIds.has(state.selectedBoxId)) {
+				state.selectedBoxId = null;
+			}
+			if (state.editingBoxId && !validIds.has(state.editingBoxId)) {
+				state.editingBoxId = null;
+			}
+		})
+	);
+
+	useBoardStore.getState().saveToStorage();
+});
