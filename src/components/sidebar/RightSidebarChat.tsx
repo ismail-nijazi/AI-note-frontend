@@ -4,35 +4,13 @@ import React, {
 	useEffect,
 	useMemo,
 } from "react";
-import { produce } from "immer";
 import { Descendant } from "slate";
-import {
-	Send,
-	Copy,
-	RotateCcw,
-	Plus,
-	Settings,
-	PanelRightClose,
-	Sparkles,
-	MessageSquare,
-	FileText,
-	Wand2,
-	Type,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-	useAIStore,
-	ChatMessage,
-} from "@/state/useAIStore";
+import { produce } from "immer";
+import { useAIStore } from "@/state/useAIStore";
 import { useWorkspaceStore } from "@/state/useWorkspaceStore";
 import {
 	useBoardStore,
-	type BoardState,
+	type NoteBox,
 } from "@/state/useBoardStore";
 import {
 	aiService,
@@ -41,34 +19,41 @@ import {
 import { apiService } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import type { Workspace } from "@/state/useWorkspaceStore";
+import { ChatHeader } from "./right-sidebar-chat/ChatHeader";
+import { ContextToggle } from "./right-sidebar-chat/ContextToggle";
+import {
+	QuickActions,
+	DEFAULT_QUICK_ACTIONS,
+} from "./right-sidebar-chat/QuickActions";
+import { SyncNotice } from "./right-sidebar-chat/SyncNotice";
+import { ChatMessages } from "./right-sidebar-chat/ChatMessages";
+import { MessageInput } from "./right-sidebar-chat/MessageInput";
 
 interface RightSidebarChatProps {
 	width: number;
 	onResize: (width: number) => void;
 }
 
-const quickActions = [
-	{
-		label: "Summarize",
-		command: "/summarize",
-		icon: FileText,
-	},
-	{
-		label: "Outline",
-		command: "/outline",
-		icon: FileText,
-	},
-	{
-		label: "Rewrite",
-		command: "/rewrite",
-		icon: RotateCcw,
-	},
-	{
-		label: "Todo",
-		command: "/todo",
-		icon: FileText,
-	},
-];
+type NoteApiResponse = {
+	content?: unknown;
+	title?: string;
+	version?: number;
+	zoom?: number;
+	pan?: {
+		x?: number;
+		y?: number;
+	} | null;
+};
+
+const isBoxesWrapper = (
+	value: unknown
+): value is { boxes: unknown[] } =>
+	typeof value === "object" &&
+	value !== null &&
+	"boxes" in value &&
+	Array.isArray(
+		(value as { boxes?: unknown[] }).boxes
+	);
 
 export const RightSidebarChat: React.FC<
 	RightSidebarChatProps
@@ -107,12 +92,18 @@ export const RightSidebarChat: React.FC<
 		appendTextToBox,
 		selectNoteBox,
 		setEditingBox,
+		loadNote,
+		canvasTransform,
 	} = useBoardStore();
 
 	const [
 		streamingMessage,
 		setStreamingMessage,
 	] = useState("");
+	const [pendingVersion, setPendingVersion] =
+		useState<number | null>(null);
+	const [isAwaitingSync, setIsAwaitingSync] =
+		useState(false);
 	const messagesEndRef =
 		useRef<HTMLDivElement>(null);
 	const scrollContainerRef =
@@ -121,6 +112,12 @@ export const RightSidebarChat: React.FC<
 		useRef<HTMLTextAreaElement>(null);
 
 	const currentNote = getCurrentNote();
+	const currentNoteVersion =
+		currentNote?.version ?? null;
+	const fallbackRefreshTimeout =
+		useRef<ReturnType<
+			typeof setTimeout
+		> | null>(null);
 	// Get chat history directly from store state to ensure reactivity
 	// Memoize to avoid unnecessary recalculations, but still reactive to chatHistories changes
 	const chatHistory = useMemo(() => {
@@ -183,6 +180,50 @@ export const RightSidebarChat: React.FC<
 			);
 		}
 	}, [streamingMessage]);
+
+	useEffect(() => {
+		return () => {
+			if (fallbackRefreshTimeout.current) {
+				clearTimeout(
+					fallbackRefreshTimeout.current
+				);
+			}
+		};
+	}, []);
+
+	useEffect(() => {
+		if (!isAwaitingSync) {
+			if (fallbackRefreshTimeout.current) {
+				clearTimeout(
+					fallbackRefreshTimeout.current
+				);
+				fallbackRefreshTimeout.current =
+					null;
+			}
+			return;
+		}
+		if (pendingVersion === null) {
+			return;
+		}
+		if (
+			currentNoteVersion !== null &&
+			currentNoteVersion >= pendingVersion
+		) {
+			if (fallbackRefreshTimeout.current) {
+				clearTimeout(
+					fallbackRefreshTimeout.current
+				);
+				fallbackRefreshTimeout.current =
+					null;
+			}
+			setIsAwaitingSync(false);
+			setPendingVersion(null);
+		}
+	}, [
+		isAwaitingSync,
+		pendingVersion,
+		currentNoteVersion,
+	]);
 
 	// Auto-grow textarea based on content
 	useEffect(() => {
@@ -345,219 +386,303 @@ export const RightSidebarChat: React.FC<
 			const handleFunctionResult = async (
 				chunk: FunctionResultChunk
 			) => {
-					if (!currentNote) {
-						return;
+				if (!currentNote) {
+					return;
+				}
+
+				if (
+					fallbackRefreshTimeout.current
+				) {
+					clearTimeout(
+						fallbackRefreshTimeout.current
+					);
+					fallbackRefreshTimeout.current =
+						null;
+				}
+
+				const parsePayload = () => {
+					if (
+						chunk.result &&
+						typeof chunk.result ===
+							"object"
+					) {
+						return chunk.result as Record<
+							string,
+							unknown
+						>;
 					}
 
-					const result =
-						chunk.result as
-							| {
-									success?: boolean;
-									message?: string;
-							  }
-							| undefined;
-
-					if (result?.message) {
-						setStreamingMessage(result.message);
-						fullResponse = result.message;
-					}
-
-					if (!result?.success) {
-						if (result?.message) {
-							toast({
-								variant: "destructive",
-								title: "AI action failed",
-								description:
-									result.message,
-							});
-						}
-						return;
-					}
-
-					try {
-						const res =
-							await apiService.getNote(
-								currentNote.id
-							);
-						const data =
-							await res.json();
-
-						const boxesSource =
-							Array.isArray(
-								(data?.content as any)
-									?.boxes
-							)
-								? (
-										data
-											.content as any
-								  ).boxes
-								: data?.content;
-
-						if (!Array.isArray(boxesSource)) {
-							return;
-						}
-
-						const clonedBoxes =
-							JSON.parse(
-								JSON.stringify(
-									boxesSource
-								)
-							);
-
-						useBoardStore.setState(
-							produce(
-								(
-									state: BoardState
-								) => {
-									state.noteBoxes =
-										clonedBoxes;
-
-									const validIds =
-										new Set(
-											clonedBoxes
-												.map(
-													(
-														box: {
-															id?: string;
-														}
-													) =>
-														box?.id
-												)
-												.filter(
-													(
-														id:
-															| string
-															| undefined
-													): id is string =>
-														typeof id ===
-														"string"
-												)
-										);
-
-									if (
-										state.selectedBoxId &&
-										!validIds.has(
-											state.selectedBoxId
-										)
-									) {
-										state.selectedBoxId =
-											null;
-									}
-
-									if (
-										state.editingBoxId &&
-										!validIds.has(
-											state.editingBoxId
-										)
-									) {
-										state.editingBoxId =
-											null;
-									}
-								}
-							)
-						);
-
-						useBoardStore
-							.getState()
-							.saveToStorage();
-
-						const collectionId =
-							workspace.active
-								.collectionId;
-
-						if (collectionId) {
-							useWorkspaceStore.setState(
-								produce(
-									(
-										state: {
-											workspace: Workspace;
-										}
-									) => {
-										const targetNote =
-											state
-												.workspace
-												.collections[
-												collectionId
-											]
-												?.notes[
-												currentNote.id
-											];
-										if (
-											targetNote
-										) {
-											targetNote.boxes =
-												clonedBoxes;
-											if (
-												typeof data?.title ===
-												"string"
-											) {
-												targetNote.title =
-													data.title;
-											}
-											if (
-												typeof data?.version ===
-												"number"
-											) {
-												targetNote.version =
-													data.version;
-											}
-											if (
-												typeof data?.zoom ===
-												"number"
-											) {
-												targetNote.zoom =
-													data.zoom;
-											}
-											if (
-												data?.pan &&
-												typeof data.pan ===
-													"object"
-											) {
-												targetNote.pan =
-													{
-														x:
-															typeof data
-																.pan
-																.x ===
-															"number"
-																? data
-																		.pan
-																		.x
-																: targetNote
-																		.pan
-																		.x,
-														y:
-															typeof data
-																.pan
-																.y ===
-															"number"
-																? data
-																		.pan
-																		.y
-																: targetNote
-																		.pan
-																		.y,
-													};
-											}
-										}
-									}
-								)
+					const rawResult = (
+						chunk.raw as
+							| Record<
+									string,
+									unknown
+							  >
+							| undefined
+					)?.result;
+					if (
+						typeof rawResult ===
+						"string"
+					) {
+						try {
+							return JSON.parse(
+								rawResult
+							) as Record<
+								string,
+								unknown
+							>;
+						} catch (error) {
+							console.warn(
+								"Chat: Failed to parse function result payload:",
+								error
 							);
 						}
-
-						toast({
-							title: "Note updated",
-							description:
-								result.message ||
-								"AI changes applied.",
-						});
-					} catch (refreshError) {
-						console.error(
-							"Failed to refresh note after AI update:",
-							refreshError
-						);
 					}
+
+					if (
+						chunk.raw &&
+						typeof chunk.raw ===
+							"object"
+					) {
+						return chunk.raw as Record<
+							string,
+							unknown
+						>;
+					}
+
+					return undefined;
 				};
+
+				const payload = parsePayload();
+				if (!payload) {
+					console.warn(
+						"Chat: Missing payload in function result chunk"
+					);
+					return;
+				}
+
+				const success =
+					(payload.success as
+						| boolean
+						| undefined) !== false;
+				const message =
+					typeof payload.message ===
+					"string"
+						? payload.message
+						: undefined;
+				const version =
+					typeof payload.version ===
+					"number"
+						? payload.version
+						: null;
+
+				if (message) {
+					setStreamingMessage(message);
+					fullResponse = message;
+				}
+
+				if (!success) {
+					toast({
+						variant: "destructive",
+						title: "AI action failed",
+						description:
+							message ||
+							"Unable to apply AI changes.",
+					});
+					setPendingVersion(null);
+					setIsAwaitingSync(false);
+					return;
+				}
+
+				if (
+					version !== null &&
+					!(
+						typeof currentNote.version ===
+							"number" &&
+						currentNote.version >=
+							version
+					)
+				) {
+					setPendingVersion(version);
+					setIsAwaitingSync(true);
+					fallbackRefreshTimeout.current =
+						setTimeout(async () => {
+							try {
+								const res =
+									await apiService.getNote(
+										currentNote.id
+									);
+								const data =
+									(await res.json()) as NoteApiResponse;
+
+								const content =
+									data.content;
+								const boxesSource =
+									Array.isArray(
+										content
+									)
+										? content
+										: isBoxesWrapper(
+												content
+										  )
+										? content.boxes
+										: undefined;
+								const clonedBoxes =
+									Array.isArray(
+										boxesSource
+									)
+										? (JSON.parse(
+												JSON.stringify(
+													boxesSource
+												)
+										  ) as NoteBox[])
+										: undefined;
+								const pan =
+									data.pan ??
+									{};
+
+								if (clonedBoxes) {
+									loadNote(
+										clonedBoxes,
+										{
+											scale:
+												typeof data.zoom ===
+												"number"
+													? data.zoom
+													: canvasTransform.scale,
+											x:
+												typeof pan.x ===
+												"number"
+													? pan.x
+													: canvasTransform.x,
+											y:
+												typeof pan.y ===
+												"number"
+													? pan.y
+													: canvasTransform.y,
+										}
+									);
+								}
+
+								const collectionId =
+									workspace
+										.active
+										.collectionId;
+
+								if (
+									collectionId
+								) {
+									useWorkspaceStore.setState(
+										produce(
+											(state: {
+												workspace: Workspace;
+											}) => {
+												const note =
+													state
+														.workspace
+														.collections[
+														collectionId
+													]
+														?.notes[
+														currentNote
+															.id
+													];
+												if (
+													note
+												) {
+													if (
+														clonedBoxes
+													) {
+														note.boxes =
+															JSON.parse(
+																JSON.stringify(
+																	clonedBoxes
+																)
+															);
+													}
+													if (
+														typeof data.title ===
+														"string"
+													) {
+														note.title =
+															data.title;
+													}
+													if (
+														typeof data.version ===
+														"number"
+													) {
+														note.version =
+															data.version;
+													}
+													if (
+														typeof data.zoom ===
+														"number"
+													) {
+														note.zoom =
+															data.zoom;
+													}
+													if (
+														data.pan &&
+														typeof data.pan ===
+															"object"
+													) {
+														note.pan =
+															{
+																x:
+																	typeof data
+																		.pan
+																		?.x ===
+																	"number"
+																		? data
+																				.pan
+																				.x
+																		: note
+																				.pan
+																				.x,
+																y:
+																	typeof data
+																		.pan
+																		?.y ===
+																	"number"
+																		? data
+																				.pan
+																				.y
+																		: note
+																				.pan
+																				.y,
+															};
+													}
+												}
+											}
+										)
+									);
+								}
+							} catch (error) {
+								console.error(
+									"Chat: Fallback refresh failed:",
+									error
+								);
+							} finally {
+								setIsAwaitingSync(
+									false
+								);
+								setPendingVersion(
+									null
+								);
+								fallbackRefreshTimeout.current =
+									null;
+							}
+						}, 1500);
+				} else {
+					setPendingVersion(null);
+					setIsAwaitingSync(false);
+				}
+
+				console.log(
+					"Chat: AI function applied, awaiting note version:",
+					version
+				);
+			};
 
 			try {
 				for await (const chunk of generator) {
@@ -575,6 +700,11 @@ export const RightSidebarChat: React.FC<
 						) {
 							await handleFunctionResult(
 								chunk
+							);
+							requestAnimationFrame(
+								() => {
+									scrollToBottom();
+								}
 							);
 						}
 						continue;
@@ -997,268 +1127,65 @@ export const RightSidebarChat: React.FC<
 		<div
 			className="flex flex-col h-full bg-card border-l border-border"
 			style={{ width }}>
-			{/* Header */}
-			<div className="flex items-center justify-between p-3 border-b border-border">
-				<div className="flex items-center gap-2">
-					<Sparkles className="h-4 w-4 text-primary" />
-					<div>
-						<div className="flex items-center gap-2">
-							<h3 className="font-semibold text-sm">
-								AI Assistant
-							</h3>
-							{/* AI Status Indicator */}
-							<div
-								className={`h-2 w-2 rounded-full ${
-									aiStatus ===
-									"available"
-										? "bg-green-500"
-										: aiStatus ===
-										  "error"
-										? "bg-red-500"
-										: "bg-yellow-500"
-								}`}
-								title={
-									aiStatus ===
-									"available"
-										? "AI Available"
-										: aiStatus ===
-										  "error"
-										? "AI Service Error"
-										: "AI Status Unknown"
-								}
-							/>
-						</div>
-						{currentNote && (
-							<p className="text-xs text-muted-foreground truncate">
-								{
-									currentNote.title
-								}
-							</p>
-						)}
-					</div>
-				</div>
-				<div className="flex items-center gap-1">
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() =>
-							currentNote &&
-							clearChatHistory(
-								currentNote.id
-							)
-						}
-						className="h-7 w-7 p-0"
-						title="Clear Chat"
-						disabled={
-							!currentNote ||
-							chatHistory.length ===
-								0
-						}>
-						<RotateCcw className="h-4 w-4" />
-					</Button>
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={
-							toggleRightSidebar
-						}
-						className="h-7 w-7 p-0"
-						title="Close Sidebar">
-						<PanelRightClose className="h-4 w-4" />
-					</Button>
-				</div>
-			</div>
+			<ChatHeader
+				aiStatus={aiStatus}
+				noteTitle={currentNote?.title}
+				canClear={
+					!!currentNote &&
+					chatHistory.length > 0
+				}
+				onClear={
+					currentNote
+						? () =>
+								clearChatHistory(
+									currentNote.id
+								)
+						: undefined
+				}
+				onToggleSidebar={
+					toggleRightSidebar
+				}
+			/>
 
-			{/* Context Toggle */}
-			<div className="p-3 border-b border-border">
-				<div className="flex items-center justify-between">
-					<Label
-						htmlFor="include-context"
-						className="text-xs">
-						Include Context
-					</Label>
-					<Switch
-						id="include-context"
-						checked={includeContext}
-						onCheckedChange={
-							setIncludeContext
-						}
-					/>
-				</div>
-				{includeContext && (
-					<p className="text-xs text-muted-foreground mt-1">
-						AI can see note content
-						and selected text
-					</p>
-				)}
-			</div>
+			<ContextToggle
+				includeContext={includeContext}
+				onToggle={setIncludeContext}
+			/>
 
-			{/* Quick Actions */}
-			<div className="p-3 border-b border-border">
-				<div className="grid grid-cols-2 gap-2">
-					{quickActions.map(
-						(action) => (
-							<Button
-								key={
-									action.command
-								}
-								variant="outline"
-								size="sm"
-								onClick={() =>
-									handleQuickAction(
-										action.command
-									)
-								}
-								className="h-8 text-xs justify-start"
-								disabled={
-									!currentNote
-								}>
-								<action.icon className="h-3 w-3 mr-1" />
-								{action.label}
-							</Button>
-						)
-					)}
-				</div>
-			</div>
+			<QuickActions
+				actions={DEFAULT_QUICK_ACTIONS}
+				disabled={!currentNote}
+				onSelect={handleQuickAction}
+			/>
 
-			{/* Chat Messages */}
-			<ScrollArea
-				ref={scrollContainerRef}
-				className="flex-1 min-h-0 p-3">
-				{!currentNote ? (
-					<div className="text-center text-muted-foreground text-sm py-8">
-						<MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-						<p>
-							Select a note to start
-							chatting
-						</p>
-					</div>
-				) : chatHistory.length === 0 &&
-				  !streamingMessage ? (
-					<div className="text-center text-muted-foreground text-sm py-8">
-						<Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
-						<p>
-							Start a conversation
-						</p>
-						<p className="text-xs mt-1">
-							Use quick actions or
-							ask anything
-						</p>
-					</div>
-				) : (
-					<div className="space-y-4">
-						{chatHistory.map(
-							(message) => (
-								<ChatMessageBubble
-									key={
-										message.id
-									}
-									message={
-										message
-									}
-									onCopy={
-										handleCopyMessage
-									}
-									onInsert={
-										handleInsertToBox
-									}
-									onApplyEdits={
-										handleApplyAIEdits
-									}
-								/>
-							)
-						)}
-						{/* Loading indicator when waiting for response */}
-						{isGenerating &&
-							!streamingMessage && (
-								<div className="flex justify-start">
-									<div className="bg-muted rounded-lg p-3">
-										<div className="flex items-center gap-1.5">
-											<div className="w-2 h-2 bg-muted-foreground/60 rounded-full loading-dot-1"></div>
-											<div className="w-2 h-2 bg-muted-foreground/60 rounded-full loading-dot-2"></div>
-											<div className="w-2 h-2 bg-muted-foreground/60 rounded-full loading-dot-3"></div>
-										</div>
-									</div>
-								</div>
-							)}
-						{streamingMessage && (
-							<ChatMessageBubble
-								key={`streaming-${streamingMessage.length}`}
-								message={{
-									id: "streaming",
-									role: "assistant",
-									content:
-										streamingMessage,
-									timestamp:
-										Date.now(),
-								}}
-								onCopy={
-									handleCopyMessage
-								}
-								onInsert={
-									handleInsertToBox
-								}
-								onApplyEdits={
-									handleApplyAIEdits
-								}
-								isStreaming
-							/>
-						)}
-						<div
-							ref={messagesEndRef}
-						/>
-					</div>
-				)}
-			</ScrollArea>
+			{isAwaitingSync && <SyncNotice />}
 
-			{/* Input */}
-			<div className="p-3 border-t border-border">
-				<div className="flex gap-2">
-					<Textarea
-						ref={textareaRef}
-						placeholder={
-							currentNote
-								? "Ask me anything..."
-								: "Select a note first..."
-						}
-						value={currentInput}
-						onChange={(e) =>
-							setCurrentInput(
-								e.target.value
-							)
-						}
-						onKeyDown={handleKeyDown}
-						disabled={
-							isGenerating ||
-							!currentNote
-						}
-						className="flex-1 text-sm resize-none leading-relaxed"
-						style={{
-							minHeight: "60px",
-							maxHeight: "168px",
-						}}
-					/>
-					<Button
-						onClick={() =>
-							handleSendMessage()
-						}
-						disabled={
-							!currentInput.trim() ||
-							isGenerating ||
-							!currentNote
-						}
-						size="sm"
-						className="self-end">
-						<Send className="h-4 w-4" />
-					</Button>
-				</div>
-				<p className="text-xs text-muted-foreground mt-2">
-					Press Enter to send,
-					Shift+Enter for new line
-				</p>
-			</div>
+			<ChatMessages
+				hasActiveNote={!!currentNote}
+				chatHistory={chatHistory}
+				streamingMessage={
+					streamingMessage
+				}
+				isGenerating={isGenerating}
+				onCopy={handleCopyMessage}
+				onInsert={handleInsertToBox}
+				onApplyEdits={handleApplyAIEdits}
+				messagesEndRef={messagesEndRef}
+				scrollContainerRef={
+					scrollContainerRef
+				}
+			/>
 
-			{/* Resize Handle */}
+			<MessageInput
+				value={currentInput}
+				onChange={setCurrentInput}
+				onSend={handleSendMessage}
+				onKeyDown={handleKeyDown}
+				isGenerating={isGenerating}
+				enabled={!!currentNote}
+				textareaRef={textareaRef}
+			/>
+
 			<div
 				className="absolute top-0 left-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-border transition-colors"
 				onMouseDown={(e) => {
@@ -1295,117 +1222,6 @@ export const RightSidebarChat: React.FC<
 					);
 				}}
 			/>
-		</div>
-	);
-};
-
-interface ChatMessageBubbleProps {
-	message: ChatMessage;
-	onCopy: (content: string) => void;
-	onInsert: (content: string) => void;
-	onApplyEdits?: (content: string) => void;
-	isStreaming?: boolean;
-}
-
-const ChatMessageBubble: React.FC<
-	ChatMessageBubbleProps
-> = ({
-	message,
-	onCopy,
-	onInsert,
-	onApplyEdits,
-	isStreaming = false,
-}) => {
-	const isUser = message.role === "user";
-	const isError =
-		message.role === "assistant" &&
-		(message.content.includes("⚠️") ||
-			message.content
-				.toLowerCase()
-				.includes("error:") ||
-			message.content
-				.toLowerCase()
-				.startsWith("error:"));
-
-	return (
-		<div
-			className={`flex ${
-				isUser
-					? "justify-end"
-					: "justify-start"
-			}`}>
-			<div
-				className={`
-        max-w-[85%] rounded-lg p-3 text-sm
-        ${
-			isUser
-				? "bg-primary text-primary-foreground"
-				: isError
-				? "bg-destructive/10 border border-destructive/20 text-destructive dark:text-destructive-foreground"
-				: "bg-muted text-muted-foreground"
-		}
-        ${isStreaming ? "animate-pulse" : ""}
-      `}>
-				<div
-					className={`whitespace-pre-wrap ${
-						isError
-							? "font-medium"
-							: ""
-					}`}>
-					{message.content}
-				</div>
-				{!isUser && !isStreaming && (
-					<div className="flex items-center gap-0.5 mt-2 pt-2 border-t border-border/20 flex-wrap">
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() =>
-								onCopy(
-									message.content
-								)
-							}
-							className="h-6 px-1.5 text-xs"
-							title="Copy">
-							<Copy className="h-3 w-3" />
-							<span className="sr-only">
-								Copy
-							</span>
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() =>
-								onInsert(
-									message.content
-								)
-							}
-							className="h-6 px-1.5 text-xs"
-							title="Insert">
-							<Plus className="h-3 w-3" />
-							<span className="sr-only">
-								Insert
-							</span>
-						</Button>
-						{onApplyEdits && (
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() =>
-									onApplyEdits(
-										message.content
-									)
-								}
-								className="h-6 px-1.5 text-xs text-primary"
-								title="Apply Edit">
-								<Wand2 className="h-3 w-3" />
-								<span className="sr-only">
-									Apply Edit
-								</span>
-							</Button>
-						)}
-					</div>
-				)}
-			</div>
 		</div>
 	);
 };
