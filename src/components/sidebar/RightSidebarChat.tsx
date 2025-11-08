@@ -4,6 +4,7 @@ import React, {
 	useEffect,
 	useMemo,
 } from "react";
+import { produce } from "immer";
 import { Descendant } from "slate";
 import {
 	Send,
@@ -29,9 +30,17 @@ import {
 	ChatMessage,
 } from "@/state/useAIStore";
 import { useWorkspaceStore } from "@/state/useWorkspaceStore";
-import { useBoardStore } from "@/state/useBoardStore";
-import { aiService } from "@/services/ai";
+import {
+	useBoardStore,
+	type BoardState,
+} from "@/state/useBoardStore";
+import {
+	aiService,
+	type FunctionResultChunk,
+} from "@/services/ai";
+import { apiService } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import type { Workspace } from "@/state/useWorkspaceStore";
 
 interface RightSidebarChatProps {
 	width: number;
@@ -333,12 +342,243 @@ export const RightSidebarChat: React.FC<
 				"Chat: Starting to iterate over generator..."
 			);
 
+			const handleFunctionResult = async (
+				chunk: FunctionResultChunk
+			) => {
+					if (!currentNote) {
+						return;
+					}
+
+					const result =
+						chunk.result as
+							| {
+									success?: boolean;
+									message?: string;
+							  }
+							| undefined;
+
+					if (result?.message) {
+						setStreamingMessage(result.message);
+						fullResponse = result.message;
+					}
+
+					if (!result?.success) {
+						if (result?.message) {
+							toast({
+								variant: "destructive",
+								title: "AI action failed",
+								description:
+									result.message,
+							});
+						}
+						return;
+					}
+
+					try {
+						const res =
+							await apiService.getNote(
+								currentNote.id
+							);
+						const data =
+							await res.json();
+
+						const boxesSource =
+							Array.isArray(
+								(data?.content as any)
+									?.boxes
+							)
+								? (
+										data
+											.content as any
+								  ).boxes
+								: data?.content;
+
+						if (!Array.isArray(boxesSource)) {
+							return;
+						}
+
+						const clonedBoxes =
+							JSON.parse(
+								JSON.stringify(
+									boxesSource
+								)
+							);
+
+						useBoardStore.setState(
+							produce(
+								(
+									state: BoardState
+								) => {
+									state.noteBoxes =
+										clonedBoxes;
+
+									const validIds =
+										new Set(
+											clonedBoxes
+												.map(
+													(
+														box: {
+															id?: string;
+														}
+													) =>
+														box?.id
+												)
+												.filter(
+													(
+														id:
+															| string
+															| undefined
+													): id is string =>
+														typeof id ===
+														"string"
+												)
+										);
+
+									if (
+										state.selectedBoxId &&
+										!validIds.has(
+											state.selectedBoxId
+										)
+									) {
+										state.selectedBoxId =
+											null;
+									}
+
+									if (
+										state.editingBoxId &&
+										!validIds.has(
+											state.editingBoxId
+										)
+									) {
+										state.editingBoxId =
+											null;
+									}
+								}
+							)
+						);
+
+						useBoardStore
+							.getState()
+							.saveToStorage();
+
+						const collectionId =
+							workspace.active
+								.collectionId;
+
+						if (collectionId) {
+							useWorkspaceStore.setState(
+								produce(
+									(
+										state: {
+											workspace: Workspace;
+										}
+									) => {
+										const targetNote =
+											state
+												.workspace
+												.collections[
+												collectionId
+											]
+												?.notes[
+												currentNote.id
+											];
+										if (
+											targetNote
+										) {
+											targetNote.boxes =
+												clonedBoxes;
+											if (
+												typeof data?.title ===
+												"string"
+											) {
+												targetNote.title =
+													data.title;
+											}
+											if (
+												typeof data?.version ===
+												"number"
+											) {
+												targetNote.version =
+													data.version;
+											}
+											if (
+												typeof data?.zoom ===
+												"number"
+											) {
+												targetNote.zoom =
+													data.zoom;
+											}
+											if (
+												data?.pan &&
+												typeof data.pan ===
+													"object"
+											) {
+												targetNote.pan =
+													{
+														x:
+															typeof data
+																.pan
+																.x ===
+															"number"
+																? data
+																		.pan
+																		.x
+																: targetNote
+																		.pan
+																		.x,
+														y:
+															typeof data
+																.pan
+																.y ===
+															"number"
+																? data
+																		.pan
+																		.y
+																: targetNote
+																		.pan
+																		.y,
+													};
+											}
+										}
+									}
+								)
+							);
+						}
+
+						toast({
+							title: "Note updated",
+							description:
+								result.message ||
+								"AI changes applied.",
+						});
+					} catch (refreshError) {
+						console.error(
+							"Failed to refresh note after AI update:",
+							refreshError
+						);
+					}
+				};
+
 			try {
 				for await (const chunk of generator) {
 					console.log(
 						"Chat: Received chunk:",
 						chunk
 					);
+
+					if (
+						typeof chunk !== "string"
+					) {
+						if (
+							chunk.type ===
+							"function_result"
+						) {
+							await handleFunctionResult(
+								chunk
+							);
+						}
+						continue;
+					}
 
 					// Update full response
 					fullResponse = chunk;

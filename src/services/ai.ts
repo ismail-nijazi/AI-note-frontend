@@ -8,6 +8,16 @@ export interface AIContext {
 	selectedBoxContent?: string;
 }
 
+export interface FunctionResultChunk {
+	type: "function_result";
+	raw: unknown;
+	result?: unknown;
+}
+
+export type AIStreamChunk =
+	| string
+	| FunctionResultChunk;
+
 export interface AIGenerateOptions {
 	messages: ChatMessage[];
 	context?: AIContext;
@@ -22,7 +32,7 @@ export interface AIGenerateOptions {
 export class AIService {
 	async *generate(
 		options: AIGenerateOptions
-	): AsyncIterable<string> {
+	): AsyncIterable<AIStreamChunk> {
 		const {
 			messages,
 			context,
@@ -168,6 +178,40 @@ export class AIService {
 								);
 								yield data.fullResponse;
 							}
+							// Handle function result events
+							else if (
+								data.type ===
+								"function_result"
+							) {
+								let parsedResult:
+									| unknown
+									| undefined;
+								try {
+									if (
+										typeof data.result ===
+										"string"
+									) {
+										parsedResult =
+											JSON.parse(
+												data.result
+											);
+									} else {
+										parsedResult =
+											data.result;
+									}
+								} catch (parseError) {
+									console.warn(
+										"AI Service: Failed to parse function result:",
+										parseError
+									);
+								}
+
+								yield {
+									type: "function_result",
+									raw: data,
+									result: parsedResult,
+								};
+							}
 							// Handle error events
 							else if (
 								data.type ===
@@ -235,6 +279,37 @@ export class AIService {
 								data.fullResponse
 							) {
 								yield data.fullResponse;
+							} else if (
+								data.type ===
+								"function_result"
+							) {
+								let parsedResult:
+									| unknown
+									| undefined;
+								try {
+									if (
+										typeof data.result ===
+										"string"
+									) {
+										parsedResult =
+											JSON.parse(
+												data.result
+											);
+									} else {
+										parsedResult =
+											data.result;
+									}
+								} catch (parseError) {
+									console.warn(
+										"AI Service: Failed to parse trailing function result:",
+										parseError
+									);
+								}
+								yield {
+									type: "function_result",
+									raw: data,
+									result: parsedResult,
+								};
 							}
 						} catch (e) {
 							console.warn(

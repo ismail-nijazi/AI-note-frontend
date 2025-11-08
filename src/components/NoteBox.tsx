@@ -752,12 +752,34 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 	]);
 
 	useEffect(() => {
-		if (isEditing) {
-			setValue(
-				cloneContent(noteBox.content)
-			);
+		if (!isEditing) {
+			return;
 		}
-	}, [isEditing, noteBox.content]);
+
+		const cloned = cloneContent(
+			noteBox.content
+		);
+
+		if (!contentsAreEqual(value, cloned)) {
+			setValue(cloned);
+		}
+
+		if (
+			!contentsAreEqual(
+				editor.children as Descendant[],
+				cloned
+			)
+		) {
+			editor.children = cloned;
+			editor.onChange();
+		}
+	}, [
+		isEditing,
+		noteBox.content,
+		editor,
+		contentsAreEqual,
+		value,
+	]);
 
 	useEffect(() => {
 		setValue(cloneContent(noteBox.content));
