@@ -1,5 +1,5 @@
 import React from "react";
-import { Copy, Plus, Wand2 } from "lucide-react";
+import { Copy, ClipboardPaste } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ChatMessage } from "@/state/useAIStore";
 
@@ -17,7 +17,7 @@ export const ChatMessageBubble: React.FC<
 	message,
 	onCopy,
 	onInsert,
-	onApplyEdits,
+	onApplyEdits: _onApplyEdits,
 	isStreaming = false,
 }) => {
 	const isUser = message.role === "user";
@@ -74,26 +74,11 @@ export const ChatMessageBubble: React.FC<
 							onClick={() => onInsert(content)}
 							className="h-6 px-1.5 text-xs"
 							title="Insert">
-							<Plus className="h-3 w-3" />
+							<ClipboardPaste className="h-3 w-3" />
 							<span className="sr-only">
 								Insert
 							</span>
 						</Button>
-						{onApplyEdits && (
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() =>
-									onApplyEdits(content)
-								}
-								className="h-6 px-1.5 text-xs text-primary"
-								title="Apply Edit">
-								<Wand2 className="h-3 w-3" />
-								<span className="sr-only">
-									Apply Edit
-								</span>
-							</Button>
-						)}
 					</div>
 				)}
 			</div>

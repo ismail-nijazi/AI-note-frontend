@@ -8,7 +8,7 @@ import { useBoardStore } from "@/state/useBoardStore";
 import { useWorkspaceStore } from "@/state/useWorkspaceStore";
 import { useAIStore } from "@/state/useAIStore";
 import { apiService } from "@/services/api";
-import { NoteBox } from "./NoteBox";
+import { NoteBox } from "./note-box/NoteBox";
 import { GlobalToolbar } from "./GlobalToolbar";
 import { socketService } from "@/services/socket";
 
