@@ -76,6 +76,12 @@ interface BoardActions {
 	) => Promise<void>;
 }
 
+export const DEFAULT_NOTEBOX_CONTENT_HEIGHT = 40;
+export const NOTEBOX_HEADER_HEIGHT = 32;
+export const DEFAULT_NOTEBOX_HEIGHT =
+	DEFAULT_NOTEBOX_CONTENT_HEIGHT +
+	NOTEBOX_HEADER_HEIGHT;
+
 const defaultContent: Descendant[] = [
 	{
 		type: "paragraph",
@@ -104,7 +110,7 @@ export const useBoardStore = create<
 			x,
 			y,
 			width: 300,
-			height: 160,
+			height: DEFAULT_NOTEBOX_HEIGHT,
 			zIndex: Date.now(),
 			content: [...defaultContent],
 		};
@@ -695,32 +701,54 @@ socketService.on((msg) => {
 	}
 
 	const { noteId, content } = msg;
-	const workspaceState = useWorkspaceStore.getState();
-	if (workspaceState.workspace.active.noteId !== noteId) {
+	const workspaceState =
+		useWorkspaceStore.getState();
+	if (
+		workspaceState.workspace.active.noteId !==
+		noteId
+	) {
 		return;
 	}
 
-	const boxesSource =
-		Array.isArray((content as any)?.boxes) ? (content as any).boxes : content;
+	const boxesSource = Array.isArray(
+		(content as any)?.boxes
+	)
+		? (content as any).boxes
+		: content;
 
 	if (!Array.isArray(boxesSource)) {
 		return;
 	}
 
-	const clonedBoxes = JSON.parse(JSON.stringify(boxesSource));
+	const clonedBoxes = JSON.parse(
+		JSON.stringify(boxesSource)
+	);
 	const validIds = new Set(
 		clonedBoxes
-			.map((box: { id?: string }) => box?.id)
-			.filter((id: string | undefined): id is string => typeof id === "string")
+			.map(
+				(box: { id?: string }) => box?.id
+			)
+			.filter(
+				(
+					id: string | undefined
+				): id is string =>
+					typeof id === "string"
+			)
 	);
 
 	useBoardStore.setState(
 		produce((state: BoardState) => {
 			state.noteBoxes = clonedBoxes;
-			if (state.selectedBoxId && !validIds.has(state.selectedBoxId)) {
+			if (
+				state.selectedBoxId &&
+				!validIds.has(state.selectedBoxId)
+			) {
 				state.selectedBoxId = null;
 			}
-			if (state.editingBoxId && !validIds.has(state.editingBoxId)) {
+			if (
+				state.editingBoxId &&
+				!validIds.has(state.editingBoxId)
+			) {
 				state.editingBoxId = null;
 			}
 		})

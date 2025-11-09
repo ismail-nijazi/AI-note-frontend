@@ -328,19 +328,6 @@ export const RightSidebarChat: React.FC<
 					: undefined,
 			};
 
-			console.log(
-				"Chat: Starting AI generation with input:",
-				input
-			);
-			console.log(
-				"Chat: Context:",
-				context
-			);
-			console.log(
-				"Chat: Include context:",
-				includeContext
-			);
-
 			// Prepare messages - add system context at the start if this is first message
 			const messagesToSend =
 				chatHistory.length === 0
@@ -355,6 +342,7 @@ export const RightSidebarChat: React.FC<
 								id: "guard",
 								role: "user" as const,
 								content: `Guidelines: 
+- DEFAULT: Answer in chat. Do not modify the note unless the user explicitly instructs you to create, update, or rename something.
 - Only create boxes when the user clearly asks to add one. 
 - When the user asks to UPDATE an existing box, identify the correct box before acting. 
 - If you know the exact box id or title, include it in update_box_content. 
@@ -1025,8 +1013,10 @@ export const RightSidebarChat: React.FC<
 	const handleQuickAction = (
 		command: string
 	) => {
-		setCurrentInput(command + " ");
-		textareaRef.current?.focus();
+		if (!currentNote || isGenerating) {
+			return;
+		}
+		void handleSendMessage(command);
 	};
 
 	const handleCopyMessage = (
@@ -1278,7 +1268,9 @@ export const RightSidebarChat: React.FC<
 
 			<QuickActions
 				actions={DEFAULT_QUICK_ACTIONS}
-				disabled={!currentNote}
+				disabled={
+					!currentNote || isGenerating
+				}
 				onSelect={handleQuickAction}
 			/>
 

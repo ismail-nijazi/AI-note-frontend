@@ -1,5 +1,10 @@
 import React from "react";
-import { FileText, RotateCcw } from "lucide-react";
+import {
+	RotateCcw,
+	Sparkles,
+	ListTree,
+	CheckSquare,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -14,12 +19,12 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] =
 		{
 			label: "Summarize",
 			command: "/summarize",
-			icon: FileText,
+			icon: Sparkles,
 		},
 		{
 			label: "Outline",
 			command: "/outline",
-			icon: FileText,
+			icon: ListTree,
 		},
 		{
 			label: "Rewrite",
@@ -29,7 +34,7 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] =
 		{
 			label: "Todo",
 			command: "/todo",
-			icon: FileText,
+			icon: CheckSquare,
 		},
 	];
 
@@ -59,7 +64,9 @@ export const QuickActions: React.FC<
 						variant="outline"
 						size="sm"
 						onClick={() =>
-							onSelect(action.command)
+							onSelect(
+								action.command
+							)
 						}
 						className="h-8 text-xs justify-start"
 						disabled={disabled}>
@@ -71,5 +78,3 @@ export const QuickActions: React.FC<
 		</div>
 	);
 };
-
-

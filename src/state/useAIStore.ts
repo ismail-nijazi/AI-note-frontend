@@ -104,8 +104,41 @@ export const useAIStore = create<
 			"id" | "timestamp"
 		>
 	) => {
+		let sanitizedContent = "";
+		if (typeof message.content === "string") {
+			sanitizedContent = message.content;
+		} else if (
+			typeof message.content === "number" ||
+			typeof message.content === "boolean"
+		) {
+			sanitizedContent = String(
+				message.content
+			);
+		} else if (
+			message.content &&
+			typeof (message.content as any)
+				.toString === "function"
+		) {
+			try {
+				sanitizedContent = String(
+					message.content
+				);
+			} catch {
+				console.warn(
+					"Discarding non-serializable chat message content.",
+					message.content
+				);
+			}
+		} else if (message.content != null) {
+			console.warn(
+				"Dropping unsupported chat message content.",
+				message.content
+			);
+		}
+
 		const newMessage: ChatMessage = {
 			...message,
+			content: sanitizedContent,
 			id: Date.now().toString(),
 			timestamp: Date.now(),
 		};

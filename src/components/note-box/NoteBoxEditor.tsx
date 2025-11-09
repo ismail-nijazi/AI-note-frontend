@@ -276,11 +276,7 @@ export const NoteBoxEditor: React.FC<
 						event.stopPropagation();
 					}
 				}}
-				className={`outline-none text-sm leading-relaxed w-full h-full transition-none  ${
-					isEditing
-						? "cursor-text"
-						: "cursor-move drag-handle"
-				}`}
+				className={`outline-none text-sm leading-relaxed w-full h-full transition-none cursor-text`}
 				style={{
 					userSelect: isEditing
 						? "text"

@@ -15,6 +15,8 @@ import {
 import {
 	useBoardStore,
 	NoteBox as NoteBoxType,
+	DEFAULT_NOTEBOX_HEIGHT,
+	NOTEBOX_HEADER_HEIGHT,
 } from "@/state/useBoardStore";
 import {
 	createNoteBoxEditor,
@@ -111,7 +113,9 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 	} = useBoardStore();
 	const editorRef =
 		useRef<HTMLDivElement | null>(null);
-	const containerRef =
+	const contentRef =
+		useRef<HTMLDivElement | null>(null);
+	const headerRef =
 		useRef<HTMLDivElement | null>(null);
 
 	// Use global editing state
@@ -382,28 +386,33 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 	const adjustHeightToContent =
 		useCallback(() => {
 			const editorEl = editorRef.current;
-			const containerEl =
-				containerRef.current;
-			if (!editorEl || !containerEl) return;
+			const contentEl = contentRef.current;
+			const headerEl = headerRef.current;
+			if (!editorEl || !contentEl) return;
 
 			const style =
 				window.getComputedStyle(
-					containerEl
+					contentEl
 				);
 			const paddingTop =
 				parseFloat(style.paddingTop) || 0;
 			const paddingBottom =
 				parseFloat(style.paddingBottom) ||
 				0;
+			const headerHeight =
+				headerEl?.offsetHeight ??
+				NOTEBOX_HEADER_HEIGHT;
 
 			const editorHeight =
 				editorEl.scrollHeight;
 			const desiredHeight = Math.ceil(
 				editorHeight +
 					paddingTop +
-					paddingBottom
+					paddingBottom +
+					headerHeight
 			);
-			const minHeight = 120;
+			const minHeight =
+				DEFAULT_NOTEBOX_HEIGHT;
 			const nextHeight = Math.max(
 				minHeight,
 				desiredHeight
@@ -691,14 +700,14 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 				y: noteBox.y,
 			}}
 			enableResizing={{
-				top: !isEditing,
-				right: !isEditing,
-				bottom: !isEditing,
+				top: false,
+				bottom: false,
+				topRight: false,
+				bottomRight: false,
+				bottomLeft: false,
+				topLeft: false,
 				left: !isEditing,
-				topRight: !isEditing,
-				bottomRight: !isEditing,
-				bottomLeft: !isEditing,
-				topLeft: !isEditing,
+				right: !isEditing,
 			}}
 			onDrag={(e, d) => {
 				// No need to adjust coordinates - react-rnd already handles the scaling
@@ -753,7 +762,7 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 			}}
 			scale={canvasTransform.scale}
 			minWidth={200}
-			minHeight={120}
+			minHeight={DEFAULT_NOTEBOX_HEIGHT}
 			style={{
 				zIndex: noteBox.zIndex,
 				transition: "none",
@@ -778,20 +787,39 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 				}
 			}}
 			onContextMenu={handleContextMenu}>
-			<div
-				ref={containerRef}
-				className={`h-full p-3 ${
-					!isEditing
-						? "drag-handle hover:bg-accent/10 transition-colors"
-						: ""
-				}`}
-				style={{
-					cursor: !isEditing
-						? "move"
-						: "default",
-				}}
-				onClick={(e) => {
-					if (!isEditing) {
+			<div className="flex flex-col">
+				<div
+					ref={headerRef}
+					className={`flex items-center justify-center px-3 py-2 text-xs text-muted-foreground ${
+						!isEditing
+							? "drag-handle cursor-move"
+							: "cursor-default"
+					}`}>
+					<div className="h-1.5 w-12 rounded-full bg-muted-foreground/40" />
+				</div>
+				<div
+					ref={contentRef}
+					className={`flex-1 px-3 py-2 cursor-text ${
+						!isEditing
+							? "hover:bg-accent/10 transition-colors"
+							: ""
+					}`}
+					onClick={(e) => {
+						if (!isEditing) {
+							if (
+								(
+									e.target as HTMLElement
+								).closest("a")
+							) {
+								return;
+							}
+							setEditingBox(
+								noteBox.id
+							);
+						}
+					}}
+					onDoubleClick={(e) => {
+						e.stopPropagation(); // Prevent creating new box when double-clicking on text box
 						if (
 							(
 								e.target as HTMLElement
@@ -800,34 +828,25 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 							return;
 						}
 						setEditingBox(noteBox.id);
-					}
-				}}
-				onDoubleClick={(e) => {
-					e.stopPropagation(); // Prevent creating new box when double-clicking on text box
-					if (
-						(
-							e.target as HTMLElement
-						).closest("a")
-					) {
-						return;
-					}
-					setEditingBox(noteBox.id);
-				}}>
-				<NoteBoxEditor
-					editor={editor}
-					slateKey={noteBox.id}
-					value={value}
-					isEditing={isEditing}
-					editorRef={editorRef}
-					onChange={handleChange}
-					onKeyDown={handleKeyDown}
-					onFocus={() =>
-						setEditingBox(noteBox.id)
-					}
-					onBlur={() =>
-						setEditingBox(null)
-					}
-				/>
+					}}>
+					<NoteBoxEditor
+						editor={editor}
+						slateKey={noteBox.id}
+						value={value}
+						isEditing={isEditing}
+						editorRef={editorRef}
+						onChange={handleChange}
+						onKeyDown={handleKeyDown}
+						onFocus={() =>
+							setEditingBox(
+								noteBox.id
+							)
+						}
+						onBlur={() =>
+							setEditingBox(null)
+						}
+					/>
+				</div>
 			</div>
 		</Rnd>
 	);

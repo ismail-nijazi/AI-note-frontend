@@ -109,11 +109,21 @@ class ApiService {
 	): Promise<Response> {
 		// Transform messages to backend format: only role and content, filter empty content
 		const transformedMessages = messages
-			.map((msg) => ({
-				role: msg.role,
-				content:
-					msg.content?.trim() || "",
-			}))
+			.map((msg) => {
+				let content = "";
+				if (typeof msg.content === "string") {
+					content = msg.content.trim();
+				} else if (
+					typeof msg.content === "number" ||
+					typeof msg.content === "boolean"
+				) {
+					content = String(msg.content);
+				}
+				return {
+					role: msg.role,
+					content,
+				};
+			})
 			.filter(
 				(msg) => msg.content.length > 0
 			); // Remove messages with empty content
