@@ -111,6 +111,8 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 	} = useBoardStore();
 	const editorRef =
 		useRef<HTMLDivElement | null>(null);
+	const containerRef =
+		useRef<HTMLDivElement | null>(null);
 
 	// Use global editing state
 	const isEditing = editingBoxId === noteBox.id;
@@ -181,35 +183,34 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 		(format: CustomElement["type"]) => {
 			const isActive =
 				isBlockActive(format);
-			const isList = [
-				"numbered-list",
-				"bulleted-list",
-			].includes(format);
+			const isList =
+				format === "numbered-list" ||
+				format === "bulleted-list";
 
 			Transforms.unwrapNodes(editor, {
 				match: (n) =>
 					!Editor.isEditor(n) &&
 					SlateElement.isElement(n) &&
-					[
-						"numbered-list",
-						"bulleted-list",
-					].includes(
-						(n as CustomElement).type
-					),
+					((n as CustomElement).type ===
+						"numbered-list" ||
+						(n as CustomElement)
+							.type ===
+							"bulleted-list"),
 				split: true,
 			});
 
-			const newProperties: Partial<CustomElement> =
-				{
-					type: isActive
-						? "paragraph"
-						: isList
-						? "list-item"
-						: format,
-				};
+			const nextType: CustomElement["type"] =
+				isActive
+					? "paragraph"
+					: isList
+					? "list-item"
+					: format;
+
 			Transforms.setNodes<CustomElement>(
 				editor,
-				newProperties
+				{
+					type: nextType,
+				}
 			);
 
 			if (!isActive && isList) {
@@ -378,6 +379,64 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 			]
 		);
 
+	const adjustHeightToContent =
+		useCallback(() => {
+			const editorEl = editorRef.current;
+			const containerEl =
+				containerRef.current;
+			if (!editorEl || !containerEl) return;
+
+			const style =
+				window.getComputedStyle(
+					containerEl
+				);
+			const paddingTop =
+				parseFloat(style.paddingTop) || 0;
+			const paddingBottom =
+				parseFloat(style.paddingBottom) ||
+				0;
+
+			const editorHeight =
+				editorEl.scrollHeight;
+			const desiredHeight = Math.ceil(
+				editorHeight +
+					paddingTop +
+					paddingBottom
+			);
+			const minHeight = 120;
+			const nextHeight = Math.max(
+				minHeight,
+				desiredHeight
+			);
+
+			if (
+				Math.abs(
+					nextHeight - noteBox.height
+				) > 1
+			) {
+				updateNoteBox(noteBox.id, {
+					height: nextHeight,
+				});
+			}
+		}, [
+			noteBox.height,
+			noteBox.id,
+			updateNoteBox,
+		]);
+
+	useEffect(() => {
+		const raf = requestAnimationFrame(
+			adjustHeightToContent
+		);
+		return () => cancelAnimationFrame(raf);
+	}, [
+		value,
+		isEditing,
+		noteBox.width,
+		noteBox.content,
+		adjustHeightToContent,
+	]);
+
 	const editorSelection = editor.selection;
 
 	useEffect(() => {
@@ -399,8 +458,15 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 			updateNoteBox(noteBox.id, {
 				content: clonedValue,
 			});
+			requestAnimationFrame(
+				adjustHeightToContent
+			);
 		},
-		[noteBox.id, updateNoteBox]
+		[
+			noteBox.id,
+			updateNoteBox,
+			adjustHeightToContent,
+		]
 	);
 
 	const contentsAreEqual = useCallback(
@@ -687,7 +753,7 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 			}}
 			scale={canvasTransform.scale}
 			minWidth={200}
-			minHeight={100}
+			minHeight={120}
 			style={{
 				zIndex: noteBox.zIndex,
 				transition: "none",
@@ -713,7 +779,8 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 			}}
 			onContextMenu={handleContextMenu}>
 			<div
-				className={`h-full p-3 overflow-y-auto no-scrollbar ${
+				ref={containerRef}
+				className={`p-3 ${
 					!isEditing
 						? "drag-handle hover:bg-accent/10 transition-colors"
 						: ""

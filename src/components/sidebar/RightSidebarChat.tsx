@@ -351,6 +351,18 @@ export const RightSidebarChat: React.FC<
 								content: `Context: You are an AI assistant helping with note-taking. You can read note content, suggest edits, and when asked to make changes, you can format responses with commands like "update title to 'New Title'" or "replace content with 'New Content'" (when a box is selected).`,
 								timestamp: 0,
 							},
+							{
+								id: "guard",
+								role: "user" as const,
+								content: `Guidelines: 
+- Only create boxes when the user clearly asks to add one. 
+- When the user asks to UPDATE an existing box, identify the correct box before acting. 
+- If you know the exact box id or title, include it in update_box_content. 
+- If you are unsure, call find_boxes first; if multiple matches are returned, call confirm_box_selection so the user can pick one. 
+- Do not create duplicate boxes when the user asked to update. 
+- Always confirm your changes once the function succeeds.`,
+								timestamp: 0,
+							},
 							...chatHistory,
 							{
 								id: "temp",
@@ -475,10 +487,122 @@ export const RightSidebarChat: React.FC<
 					"number"
 						? payload.version
 						: null;
+				const action =
+					typeof payload.action ===
+					"string"
+						? payload.action
+						: undefined;
 
 				if (message) {
 					setStreamingMessage(message);
 					fullResponse = message;
+				}
+
+				if (
+					action === "find_results" ||
+					action === "confirm_selection"
+				) {
+					const formatOptions = (
+						items: Array<
+							Record<
+								string,
+								unknown
+							>
+						>
+					): string => {
+						return items
+							.map((item, idx) => {
+								const optionTitle =
+									typeof item.title ===
+									"string"
+										? item.title
+										: `Option ${
+												idx +
+												1
+										  }`;
+								const optionIndex =
+									typeof item.index ===
+									"number"
+										? item.index
+										: idx;
+								const preview =
+									typeof item.preview ===
+									"string"
+										? item.preview
+										: undefined;
+								const parts = [
+									`${
+										idx + 1
+									}. ${optionTitle} (index ${optionIndex})`,
+								];
+								if (preview) {
+									parts.push(
+										`   Preview: ${preview}`
+									);
+								}
+								return parts.join(
+									"\n"
+								);
+							})
+							.join("\n");
+					};
+
+					let formatted = message || "";
+
+					if (
+						action ===
+							"find_results" &&
+						Array.isArray(
+							payload.matches
+						)
+					) {
+						const list =
+							formatOptions(
+								payload.matches as Array<
+									Record<
+										string,
+										unknown
+									>
+								>
+							);
+						formatted = [
+							message ||
+								"Here are the boxes I found:",
+							list,
+						]
+							.filter(Boolean)
+							.join("\n");
+					}
+
+					if (
+						action ===
+							"confirm_selection" &&
+						Array.isArray(
+							payload.options
+						)
+					) {
+						const list =
+							formatOptions(
+								payload.options as Array<
+									Record<
+										string,
+										unknown
+									>
+								>
+							);
+						formatted = [
+							message ||
+								"Please confirm which box should be updated:",
+							list,
+						]
+							.filter(Boolean)
+							.join("\n");
+					}
+
+					setStreamingMessage(
+						formatted
+					);
+					fullResponse = formatted;
 				}
 
 				if (!success) {

@@ -43,11 +43,15 @@ const Signup = () => {
 		showConfirmPassword,
 		setShowConfirmPassword,
 	] = useState(false);
-	const [isLoading, setIsLoading] =
-		useState(false);
 	const navigate = useNavigate();
 	const { toast } = useToast();
-	const { login } = useAuthStore();
+	const {
+		registerWithEmail,
+		loginWithGoogle,
+		loginAsDemo,
+		isLoading,
+		clearError,
+	} = useAuthStore();
 
 	const handleChange = (
 		field: string,
@@ -97,15 +101,13 @@ const Signup = () => {
 			return;
 		}
 
-		setIsLoading(true);
-
-		// Simulate signup process
-		setTimeout(() => {
-			// Login user after successful signup
-			login({
-				id: `user-${Date.now()}`,
-				email: formData.email,
+		try {
+			await registerWithEmail({
 				name: formData.name,
+				email: formData.email,
+				password: formData.password,
+				confirmPassword:
+					formData.confirmPassword,
 			});
 			toast({
 				title: "Account created successfully! 🎉",
@@ -113,18 +115,51 @@ const Signup = () => {
 					"Welcome to Whiteboard Notes. Let's start organizing your ideas!",
 			});
 			navigate("/app");
-			setIsLoading(false);
-		}, 1000);
+		} catch (err) {
+			const message =
+				err instanceof Error
+					? err.message
+					: "We couldn't create your account. Please try again.";
+			toast({
+				title: "Sign up failed",
+				description: message,
+				variant: "destructive",
+			});
+		} finally {
+			clearError();
+		}
 	};
 
 	const handleDemoAccess = () => {
-		// Login as demo user
-		login({
-			id: "demo-user",
-			email: "demo@example.com",
-			name: "Demo User",
+		loginAsDemo();
+		toast({
+			title: "Demo workspace ready",
+			description:
+				"You're logged in as a demo user.",
 		});
 		navigate("/app");
+	};
+
+	const handleGoogleSignup = async () => {
+		try {
+			await loginWithGoogle();
+			toast({
+				title: "Signed in with Google",
+				description:
+					"Your Google account is now connected.",
+			});
+			navigate("/app");
+		} catch (err) {
+			const message =
+				err instanceof Error
+					? err.message
+					: "Google sign up is not available right now.";
+			toast({
+				title: "Google sign up unavailable",
+				description: message,
+				variant: "destructive",
+			});
+		}
 	};
 
 	const passwordRequirements = [
@@ -456,35 +491,12 @@ const Signup = () => {
 							</Button>
 						</form>
 
-						<div className="mt-6">
-							<div className="relative">
-								<div className="absolute inset-0 flex items-center">
-									<Separator className="w-full" />
-								</div>
-								<div className="relative flex justify-center text-xs uppercase">
-									<span className="bg-background px-2 text-muted-foreground">
-										Or
-									</span>
-								</div>
-							</div>
-
-							<Button
-								variant="outline"
-								className="w-full mt-4"
-								onClick={
-									handleDemoAccess
-								}>
-								<PenTool className="mr-2 h-4 w-4" />
-								Try Demo First (No
-								Account Needed)
-							</Button>
-						</div>
-
-						{/* Social Signup Options */}
 						<div className="mt-4 space-y-2">
 							<Button
 								variant="outline"
-								className="w-full">
+								className="w-full"
+								onClick={handleGoogleSignup}
+								disabled={isLoading}>
 								<svg
 									className="mr-2 h-4 w-4"
 									viewBox="0 0 24 24">
@@ -507,19 +519,6 @@ const Signup = () => {
 								</svg>
 								Sign up with
 								Google
-							</Button>
-
-							<Button
-								variant="outline"
-								className="w-full">
-								<svg
-									className="mr-2 h-4 w-4"
-									fill="currentColor"
-									viewBox="0 0 24 24">
-									<path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
-								</svg>
-								Sign up with
-								Twitter
 							</Button>
 						</div>
 					</CardContent>

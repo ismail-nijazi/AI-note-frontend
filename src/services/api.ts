@@ -4,39 +4,96 @@ import { ChatMessage } from "@/state/useAIStore";
 import { NoteBox } from "@/state/useBoardStore";
 
 class ApiService {
-	private async request(
-		endpoint: string,
+	private buildUrl(endpoint: string): string {
+		return `${apiConfig.baseURL}${endpoint}`;
+	}
+
+	private buildConfig(
 		options: RequestInit = {}
-	): Promise<Response> {
-		const url = `${apiConfig.baseURL}${endpoint}`;
-		const config: RequestInit = {
+	): RequestInit {
+		return {
 			...options,
 			headers: {
 				...apiConfig.headers,
 				...options.headers,
 			},
 		};
+	}
 
-		try {
-			const response = await fetch(
-				url,
-				config
+	private async request(
+		endpoint: string,
+		options: RequestInit = {}
+	): Promise<Response> {
+		const response = await fetch(
+			this.buildUrl(endpoint),
+			this.buildConfig(options)
+		);
+
+		if (!response.ok) {
+			throw new Error(
+				`HTTP error! status: ${response.status}`
 			);
-
-			if (!response.ok) {
-				throw new Error(
-					`HTTP error! status: ${response.status}`
-				);
-			}
-
-			return response;
-		} catch (error) {
-			console.error(
-				"API request failed:",
-				error
-			);
-			throw error;
 		}
+
+		return response;
+	}
+
+	async get(
+		endpoint: string,
+		options?: RequestInit
+	): Promise<Response> {
+		return fetch(
+			this.buildUrl(endpoint),
+			this.buildConfig({
+				method: "GET",
+				...options,
+			})
+		);
+	}
+
+	async post(
+		endpoint: string,
+		body?: unknown,
+		options?: RequestInit
+	): Promise<Response> {
+		const config = this.buildConfig({
+			method: "POST",
+			body:
+				body !== undefined
+					? JSON.stringify(body)
+					: undefined,
+			...options,
+		});
+		return fetch(this.buildUrl(endpoint), config);
+	}
+
+	async put(
+		endpoint: string,
+		body?: unknown,
+		options?: RequestInit
+	): Promise<Response> {
+		const config = this.buildConfig({
+			method: "PUT",
+			body:
+				body !== undefined
+					? JSON.stringify(body)
+					: undefined,
+			...options,
+		});
+		return fetch(this.buildUrl(endpoint), config);
+	}
+
+	async delete(
+		endpoint: string,
+		options?: RequestInit
+	): Promise<Response> {
+		return fetch(
+			this.buildUrl(endpoint),
+			this.buildConfig({
+				method: "DELETE",
+				...options,
+			})
+		);
 	}
 
 	// AI endpoints
