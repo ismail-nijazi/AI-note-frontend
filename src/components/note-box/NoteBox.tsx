@@ -758,7 +758,7 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 				zIndex: noteBox.zIndex,
 				transition: "none",
 			}}
-			className={`rounded-lg border bg-card transition-all duration-200 ${
+			className={`rounded-lg border bg-card ${
 				isSelected
 					? "border-gray-400 shadow-md"
 					: "border-gray-200 hover:border-gray-300 hover:shadow-sm"
@@ -780,7 +780,7 @@ export const NoteBox: React.FC<NoteBoxProps> = ({
 			onContextMenu={handleContextMenu}>
 			<div
 				ref={containerRef}
-				className={`p-3 ${
+				className={`h-full p-3 ${
 					!isEditing
 						? "drag-handle hover:bg-accent/10 transition-colors"
 						: ""

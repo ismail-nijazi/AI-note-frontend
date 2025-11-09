@@ -276,7 +276,7 @@ export const NoteBoxEditor: React.FC<
 						event.stopPropagation();
 					}
 				}}
-				className={`outline-none text-sm leading-relaxed ${
+				className={`outline-none text-sm leading-relaxed w-full h-full transition-none  ${
 					isEditing
 						? "cursor-text"
 						: "cursor-move drag-handle"
@@ -286,6 +286,7 @@ export const NoteBoxEditor: React.FC<
 						? "text"
 						: "none",
 					pointerEvents: "auto",
+					minHeight: "100%",
 				}}
 			/>
 		</Slate>
