@@ -1,6 +1,5 @@
 import { ChatMessage } from "@/state/useAIStore";
 import { Note } from "@/state/useWorkspaceStore";
-import { Descendant } from "slate";
 import { apiService } from "./api";
 
 export interface AIContext {
@@ -28,6 +27,30 @@ export interface AIGenerateOptions {
 	stream?: boolean;
 }
 
+// SSE Event types
+const SSE_EVENTS = {
+	TOKEN: "token",
+	COMPLETION: "completion",
+	FUNCTION_RESULT: "function_result",
+	ERROR: "error",
+} as const;
+
+// SSE Line prefixes
+const SSE_PREFIXES = {
+	EVENT: "event: ",
+	DATA: "data: ",
+} as const;
+
+interface SSEData {
+	type?: string;
+	fullResponse?: string;
+	result?: string | unknown;
+	error?: {
+		message?: string;
+		code?: string;
+	};
+}
+
 // Real AI service that connects to backend
 export class AIService {
 	async *generate(
@@ -48,7 +71,6 @@ export class AIService {
 				options
 			);
 
-			// Call the real backend API
 			const response =
 				await apiService.generateAI(
 					messages,
@@ -61,37 +83,46 @@ export class AIService {
 					}
 				);
 
-			console.log(
-				"AI Service: Received response from backend:",
-				response.status,
-				response.statusText
-			);
-
-			// Check if response body exists
 			if (!response.body) {
-				let errorMessage =
-					"No response body received from server";
-				try {
-					const errorData =
-						await response.json();
-					errorMessage =
-						errorData.error
-							?.message ||
-						errorMessage;
-				} catch {
-					// Response might not be JSON
-				}
+				const errorMessage =
+					await this.extractErrorMessage(
+						response
+					);
 				throw new Error(errorMessage);
 			}
 
-			const responseStream = response.body;
-			const reader =
-				responseStream.getReader();
-			const decoder = new TextDecoder();
-			let buffer = "";
+			yield* this.parseSSEStream(
+				response.body
+			);
+		} catch (error) {
+			throw this.enhanceError(error);
+		}
+	}
 
-			let currentEvent = "";
+	private async extractErrorMessage(
+		response: Response
+	): Promise<string> {
+		try {
+			const errorData =
+				await response.json();
+			return (
+				errorData.error?.message ||
+				"No response body received from server"
+			);
+		} catch {
+			return "No response body received from server";
+		}
+	}
 
+	private async *parseSSEStream(
+		stream: ReadableStream<Uint8Array>
+	): AsyncIterable<AIStreamChunk> {
+		const reader = stream.getReader();
+		const decoder = new TextDecoder();
+		let buffer = "";
+		let currentEvent = "";
+
+		try {
 			while (true) {
 				const { done, value } =
 					await reader.read();
@@ -104,7 +135,6 @@ export class AIService {
 				}
 
 				if (done) {
-					// Decode any remaining buffer
 					if (buffer.trim()) {
 						buffer +=
 							decoder.decode(); // Final decode
@@ -112,293 +142,312 @@ export class AIService {
 					break;
 				}
 
-				// Process complete lines
-				const lines = buffer.split("\n");
-				buffer = lines.pop() || ""; // Keep incomplete line in buffer
+				const { lines, remainingBuffer } =
+					this.splitLines(buffer);
+				buffer = remainingBuffer;
 
 				for (const line of lines) {
+					const eventUpdate =
+						this.parseEventLine(line);
+					if (eventUpdate) {
+						currentEvent =
+							eventUpdate;
+						continue;
+					}
+
 					if (line.trim() === "") {
-						// Empty line indicates end of event, reset currentEvent
 						currentEvent = "";
 						continue;
 					}
 
-					// Track event type
-					if (
-						line.startsWith("event: ")
-					) {
-						currentEvent = line
-							.slice(7)
-							.trim();
-						continue;
-					}
-
-					// Process data lines based on current event
-					if (
-						line.startsWith("data: ")
-					) {
-						try {
-							const data =
-								JSON.parse(
-									line.slice(6)
-								);
-							console.log(
-								"AI Service: Parsed SSE data:",
-								{
-									event: currentEvent,
-									data,
-								}
-							);
-
-							// Handle token events
-							if (
-								currentEvent ===
-									"token" &&
-								data.type ===
-									"token" &&
-								data.fullResponse
-							) {
-								console.log(
-									"AI Service: Yielding token response:",
-									data.fullResponse
-								);
-								yield data.fullResponse;
-							}
-							// Handle completion events
-							else if (
-								(currentEvent ===
-									"completion" ||
-									data.type ===
-										"completion") &&
-								data.fullResponse
-							) {
-								console.log(
-									"AI Service: Yielding completion response:",
-									data.fullResponse
-								);
-								yield data.fullResponse;
-							}
-							// Handle function result events
-							else if (
-								data.type ===
-								"function_result"
-							) {
-								let parsedResult:
-									| unknown
-									| undefined;
-								try {
-									if (
-										typeof data.result ===
-										"string"
-									) {
-										parsedResult =
-											JSON.parse(
-												data.result
-											);
-									} else {
-										parsedResult =
-											data.result;
-									}
-								} catch (parseError) {
-									console.warn(
-										"AI Service: Failed to parse function result:",
-										parseError
-									);
-								}
-
-								yield {
-									type: "function_result",
-									raw: data,
-									result: parsedResult,
-								};
-							}
-							// Handle error events
-							else if (
-								data.type ===
-								"error"
-							) {
-								console.error(
-									"AI Service: Received error:",
-									data.error
-								);
-								const errorMessage =
-									data.error
-										?.message ||
-									"AI generation failed";
-								const errorCode =
-									data.error
-										?.code ||
-									"AI_GENERATION_FAILED";
-								const error =
-									new Error(
-										errorMessage
-									) as Error & {
-										code?: string;
-									};
-								error.code =
-									errorCode;
-								throw error;
-							}
-						} catch (e) {
-							// Skip invalid JSON lines
-							console.warn(
-								"AI Service: Failed to parse SSE data:",
-								line,
-								e
-							);
-						}
+					const chunk =
+						this.parseDataLine(
+							line,
+							currentEvent
+						);
+					if (chunk) {
+						yield chunk;
 					}
 				}
 			}
 
-			// Process any remaining buffer after stream ends
+			// Process remaining buffer
 			if (buffer.trim()) {
-				const lines = buffer.split("\n");
+				const { lines } =
+					this.splitLines(buffer);
+				let finalEvent = "";
+
 				for (const line of lines) {
+					const eventUpdate =
+						this.parseEventLine(line);
+					if (eventUpdate) {
+						finalEvent = eventUpdate;
+						continue;
+					}
+
 					if (line.trim() === "")
 						continue;
-					if (
-						line.startsWith("event: ")
-					) {
-						currentEvent = line
-							.slice(7)
-							.trim();
-						continue;
-					}
-					if (
-						line.startsWith("data: ")
-					) {
-						try {
-							const data =
-								JSON.parse(
-									line.slice(6)
-								);
-							if (
-								currentEvent ===
-									"completion" &&
-								data.fullResponse
-							) {
-								yield data.fullResponse;
-							} else if (
-								data.type ===
-								"function_result"
-							) {
-								let parsedResult:
-									| unknown
-									| undefined;
-								try {
-									if (
-										typeof data.result ===
-										"string"
-									) {
-										parsedResult =
-											JSON.parse(
-												data.result
-											);
-									} else {
-										parsedResult =
-											data.result;
-									}
-								} catch (parseError) {
-									console.warn(
-										"AI Service: Failed to parse trailing function result:",
-										parseError
-									);
-								}
-								yield {
-									type: "function_result",
-									raw: data,
-									result: parsedResult,
-								};
-							}
-						} catch (e) {
-							console.warn(
-								"AI Service: Failed to parse final buffer:",
-								e
-							);
-						}
+
+					const chunk =
+						this.parseDataLine(
+							line,
+							finalEvent
+						);
+					if (chunk) {
+						yield chunk;
 					}
 				}
 			}
-		} catch (error) {
-			console.error(
-				"AI generation failed:",
-				error
+		} finally {
+			reader.releaseLock();
+		}
+	}
+
+	private splitLines(buffer: string): {
+		lines: string[];
+		remainingBuffer: string;
+	} {
+		const lines = buffer.split("\n");
+		const remainingBuffer = lines.pop() || "";
+		return { lines, remainingBuffer };
+	}
+
+	private parseEventLine(
+		line: string
+	): string | null {
+		if (line.startsWith(SSE_PREFIXES.EVENT)) {
+			return line
+				.slice(SSE_PREFIXES.EVENT.length)
+				.trim();
+		}
+		return null;
+	}
+
+	private parseDataLine(
+		line: string,
+		currentEvent: string
+	): AIStreamChunk | null {
+		if (!line.startsWith(SSE_PREFIXES.DATA)) {
+			return null;
+		}
+
+		try {
+			const data: SSEData = JSON.parse(
+				line.slice(
+					SSE_PREFIXES.DATA.length
+				)
 			);
 
-			// Preserve original error if it's already an Error with a code
+			console.log(
+				"AI Service: Parsed SSE data:",
+				{ event: currentEvent, data }
+			);
+
+			// Handle text responses (token or completion)
 			if (
-				error instanceof Error &&
-				"code" in error
-			) {
-				throw error;
-			}
-
-			// Re-throw the error with additional context
-			const errorMessage =
-				error instanceof Error
-					? error.message
-					: "Unknown error occurred";
-
-			const enhancedError = new Error(
-				errorMessage.includes(
-					"AI service error"
+				this.isTextEvent(
+					currentEvent,
+					data
 				)
-					? errorMessage
-					: `AI service error: ${errorMessage}`
-			) as Error & {
-				code?: string;
-				originalError?: unknown;
-			};
-
-			// Preserve HTTP status code if available
-			if (errorMessage.includes("429")) {
-				enhancedError.code =
-					"QUOTA_EXCEEDED";
-			} else if (
-				errorMessage.includes("401")
 			) {
-				enhancedError.code =
-					"AUTHENTICATION_FAILED";
-			} else if (
-				errorMessage.includes(
-					"rate limit"
-				) ||
-				errorMessage.includes("429")
-			) {
-				enhancedError.code =
-					"RATE_LIMIT_EXCEEDED";
-			} else if (
-				errorMessage.includes(
-					"network"
-				) ||
-				errorMessage.includes("fetch")
-			) {
-				enhancedError.code =
-					"NETWORK_ERROR";
-			} else {
-				enhancedError.code =
-					"AI_GENERATION_FAILED";
+				if (data.fullResponse) {
+					console.log(
+						"AI Service: Yielding text response:",
+						data.fullResponse.substring(
+							0,
+							50
+						) + "..."
+					);
+					return data.fullResponse;
+				}
 			}
 
-			enhancedError.originalError = error;
-			throw enhancedError;
+			// Handle function results
+			if (
+				data.type ===
+				SSE_EVENTS.FUNCTION_RESULT
+			) {
+				return this.createFunctionResultChunk(
+					data
+				);
+			}
+
+			// Handle errors
+			if (data.type === SSE_EVENTS.ERROR) {
+				this.throwSSEError(data);
+			}
+
+			return null;
+		} catch (error) {
+			console.warn(
+				"AI Service: Failed to parse SSE data:",
+				line,
+				error
+			);
+			return null;
 		}
+	}
+
+	private isTextEvent(
+		event: string,
+		data: SSEData
+	): boolean {
+		return (
+			(event === SSE_EVENTS.TOKEN &&
+				data.type === SSE_EVENTS.TOKEN) ||
+			((event === SSE_EVENTS.COMPLETION ||
+				data.type ===
+					SSE_EVENTS.COMPLETION) &&
+				!!data.fullResponse)
+		);
+	}
+
+	private createFunctionResultChunk(
+		data: SSEData
+	): FunctionResultChunk {
+		let parsedResult: unknown | undefined;
+
+		try {
+			if (typeof data.result === "string") {
+				parsedResult = JSON.parse(
+					data.result
+				);
+			} else {
+				parsedResult = data.result;
+			}
+		} catch (parseError) {
+			console.warn(
+				"AI Service: Failed to parse function result:",
+				parseError
+			);
+		}
+
+		return {
+			type: "function_result",
+			raw: data,
+			result: parsedResult,
+		};
+	}
+
+	private throwSSEError(data: SSEData): never {
+		console.error(
+			"AI Service: Received error:",
+			data.error
+		);
+
+		const errorMessage =
+			data.error?.message ||
+			"AI generation failed";
+		const errorCode =
+			data.error?.code ||
+			"AI_GENERATION_FAILED";
+
+		const error = new Error(
+			errorMessage
+		) as Error & { code?: string };
+		error.code = errorCode;
+		throw error;
+	}
+
+	private enhanceError(
+		error: unknown
+	): Error & {
+		code?: string;
+		originalError?: unknown;
+	} {
+		console.error(
+			"AI generation failed:",
+			error
+		);
+
+		// Preserve original error if it already has a code
+		if (
+			error instanceof Error &&
+			"code" in error
+		) {
+			return error as Error & {
+				code?: string;
+			};
+		}
+
+		const errorMessage =
+			error instanceof Error
+				? error.message
+				: "Unknown error occurred";
+
+		const enhancedError = new Error(
+			errorMessage.includes(
+				"AI service error"
+			)
+				? errorMessage
+				: `AI service error: ${errorMessage}`
+		) as Error & {
+			code?: string;
+			originalError?: unknown;
+		};
+
+		// Map error messages to error codes
+		const errorCodeMap: Array<{
+			pattern: string | RegExp;
+			code: string;
+		}> = [
+			{
+				pattern: "429",
+				code: "QUOTA_EXCEEDED",
+			},
+			{
+				pattern: "401",
+				code: "AUTHENTICATION_FAILED",
+			},
+			{
+				pattern: /rate limit|429/i,
+				code: "RATE_LIMIT_EXCEEDED",
+			},
+			{
+				pattern: /network|fetch/i,
+				code: "NETWORK_ERROR",
+			},
+		];
+
+		for (const {
+			pattern,
+			code,
+		} of errorCodeMap) {
+			if (
+				typeof pattern === "string"
+					? errorMessage.includes(
+							pattern
+					  )
+					: pattern.test(errorMessage)
+			) {
+				enhancedError.code = code;
+				break;
+			}
+		}
+
+		if (!enhancedError.code) {
+			enhancedError.code =
+				"AI_GENERATION_FAILED";
+		}
+
+		enhancedError.originalError = error;
+		return enhancedError;
 	}
 
 	private async *generateMockResponse(
 		options: AIGenerateOptions
 	): AsyncIterable<string> {
-		const { messages, context } = options;
 		const lastMessage =
-			messages[messages.length - 1];
+			options.messages[
+				options.messages.length - 1
+			];
 		const userInput =
-			lastMessage?.content || "";
+			(lastMessage?.content as string) ||
+			"";
 
-		// Generate mock response
 		const response = this.getMockResponse(
 			userInput,
-			context
+			options.context
 		);
 
 		// Stream the response character by character
@@ -421,28 +470,31 @@ export class AIService {
 		const lowerInput = input.toLowerCase();
 
 		// Quick action responses
-		if (lowerInput.startsWith("/summarize")) {
-			return "Here's a summary of your note:\n\n• Key points from your whiteboard boxes\n• Main themes and concepts\n• Action items or next steps\n\nThis is a mock summary. In production, this would analyze your actual note content.";
-		}
+		const quickActions: Record<
+			string,
+			string
+		> = {
+			"/summarize":
+				"Here's a summary of your note:\n\n• Key points from your whiteboard boxes\n• Main themes and concepts\n• Action items or next steps\n\nThis is a mock summary. In production, this would analyze your actual note content.",
+			"/outline":
+				"# Note Outline\n\n## 1. Introduction\n- Overview of main topics\n\n## 2. Key Points\n- Important concepts\n- Supporting details\n\n## 3. Conclusion\n- Summary\n- Next steps\n\nThis is a mock outline. In production, this would create an outline from your note content.",
+			"/rewrite":
+				"Here's a rewritten version of your content:\n\n*[Rewritten text would appear here based on your selected content]*\n\nThis is a mock rewrite. In production, this would rewrite your selected text.",
+			"/todo":
+				"## Action Items\n\n- [ ] Review main concepts\n- [ ] Organize notes\n- [ ] Follow up on key points\n- [ ] Schedule next review\n\nThis is a mock todo list. In production, this would extract actionable items from your notes.",
+			"/translate":
+				"Translation:\n\n*[Translated content would appear here]*\n\nThis is a mock translation. In production, this would translate your selected text.",
+			"/insert":
+				"I can help you insert content into your note boxes. This would:\n\n• Insert text at your current cursor position\n• Create new boxes with generated content\n• Replace selected text with improved versions\n\nThis is a mock response. In production, I would generate specific content to insert.",
+		};
 
-		if (lowerInput.startsWith("/outline")) {
-			return "# Note Outline\n\n## 1. Introduction\n- Overview of main topics\n\n## 2. Key Points\n- Important concepts\n- Supporting details\n\n## 3. Conclusion\n- Summary\n- Next steps\n\nThis is a mock outline. In production, this would create an outline from your note content.";
-		}
-
-		if (lowerInput.startsWith("/rewrite")) {
-			return "Here's a rewritten version of your content:\n\n*[Rewritten text would appear here based on your selected content]*\n\nThis is a mock rewrite. In production, this would rewrite your selected text.";
-		}
-
-		if (lowerInput.startsWith("/todo")) {
-			return "## Action Items\n\n- [ ] Review main concepts\n- [ ] Organize notes\n- [ ] Follow up on key points\n- [ ] Schedule next review\n\nThis is a mock todo list. In production, this would extract actionable items from your notes.";
-		}
-
-		if (lowerInput.startsWith("/translate")) {
-			return "Translation:\n\n*[Translated content would appear here]*\n\nThis is a mock translation. In production, this would translate your selected text.";
-		}
-
-		if (lowerInput.startsWith("/insert")) {
-			return "I can help you insert content into your note boxes. This would:\n\n• Insert text at your current cursor position\n• Create new boxes with generated content\n• Replace selected text with improved versions\n\nThis is a mock response. In production, I would generate specific content to insert.";
+		for (const [
+			command,
+			response,
+		] of Object.entries(quickActions)) {
+			if (lowerInput.startsWith(command)) {
+				return response;
+			}
 		}
 
 		// General responses
@@ -458,11 +510,10 @@ export class AIService {
 		}
 
 		// Default response
-		return `I understand you're asking about: "${input}"\n\n${
-			context
-				? "Based on your note context, "
-				: ""
-		}I can help you with various tasks like summarizing, outlining, rewriting content, or creating new material for your whiteboard.\n\nThis is a mock AI response. In production, this would be powered by a real language model like GPT-4, Claude, or similar.`;
+		const contextPrefix = context
+			? "Based on your note context, "
+			: "";
+		return `I understand you're asking about: "${input}"\n\n${contextPrefix}I can help you with various tasks like summarizing, outlining, rewriting content, or creating new material for your whiteboard.\n\nThis is a mock AI response. In production, this would be powered by a real language model like GPT-4, Claude, or similar.`;
 	}
 }
 

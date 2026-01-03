@@ -379,9 +379,6 @@ export const RightSidebarChat: React.FC<
 			});
 
 			let fullResponse = "";
-			console.log(
-				"Chat: Starting to iterate over generator..."
-			);
 
 			const handleFunctionResult = async (
 				chunk: FunctionResultChunk
@@ -798,11 +795,6 @@ export const RightSidebarChat: React.FC<
 
 			try {
 				for await (const chunk of generator) {
-					console.log(
-						"Chat: Received chunk:",
-						chunk
-					);
-
 					if (
 						typeof chunk !== "string"
 					) {
@@ -827,15 +819,10 @@ export const RightSidebarChat: React.FC<
 
 					// Update state immediately
 					setStreamingMessage(chunk);
-					console.log(
-						"Chat: Updated streamingMessage state to:",
-						chunk.substring(0, 50) +
-							"..."
-					);
 
 					// Small delay to allow React to process the state update
 					await new Promise((resolve) =>
-						setTimeout(resolve, 10)
+						setTimeout(resolve, 20)
 					);
 
 					// Force scroll to bottom on each update

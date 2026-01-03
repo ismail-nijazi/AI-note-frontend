@@ -3,6 +3,8 @@ import { AIContext } from "./ai";
 import { ChatMessage } from "@/state/useAIStore";
 import { NoteBox } from "@/state/useBoardStore";
 
+export const DEFAULT_MODEL = "gpt-4.1-mini";
+
 class ApiService {
 	private buildUrl(endpoint: string): string {
 		return `${apiConfig.baseURL}${endpoint}`;
@@ -64,7 +66,10 @@ class ApiService {
 					: undefined,
 			...options,
 		});
-		return fetch(this.buildUrl(endpoint), config);
+		return fetch(
+			this.buildUrl(endpoint),
+			config
+		);
 	}
 
 	async put(
@@ -80,7 +85,10 @@ class ApiService {
 					: undefined,
 			...options,
 		});
-		return fetch(this.buildUrl(endpoint), config);
+		return fetch(
+			this.buildUrl(endpoint),
+			config
+		);
 	}
 
 	async delete(
@@ -111,11 +119,16 @@ class ApiService {
 		const transformedMessages = messages
 			.map((msg) => {
 				let content = "";
-				if (typeof msg.content === "string") {
+				if (
+					typeof msg.content ===
+					"string"
+				) {
 					content = msg.content.trim();
 				} else if (
-					typeof msg.content === "number" ||
-					typeof msg.content === "boolean"
+					typeof msg.content ===
+						"number" ||
+					typeof msg.content ===
+						"boolean"
 				) {
 					content = String(msg.content);
 				}
@@ -145,10 +158,10 @@ class ApiService {
 					includeContext: true,
 					model:
 						options?.model ||
-						"gpt-3.5-turbo",
+						DEFAULT_MODEL,
 					maxTokens:
 						options?.maxTokens ||
-						1000,
+						4000,
 					temperature:
 						options?.temperature ||
 						0.7,
