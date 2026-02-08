@@ -1,853 +1,641 @@
 import React, {
-	useCallback,
-	useMemo,
-	useRef,
-	useEffect,
-	useState,
+  useCallback,
+  useMemo,
+  useRef,
+  useEffect,
+  useState,
 } from "react";
 import { Rnd } from "react-rnd";
+import { Descendant, Editor, Transforms, Element as SlateElement } from "slate";
 import {
-	Descendant,
-	Editor,
-	Transforms,
-	Element as SlateElement,
-} from "slate";
-import {
-	useBoardStore,
-	NoteBox as NoteBoxType,
-	DEFAULT_NOTEBOX_HEIGHT,
-	NOTEBOX_HEADER_HEIGHT,
+  useBoardStore,
+  NoteBox as NoteBoxType,
+  DEFAULT_NOTEBOX_HEIGHT,
+  NOTEBOX_HEADER_HEIGHT,
 } from "@/state/useBoardStore";
 import {
-	createNoteBoxEditor,
-	cloneContent,
-	ensureLinkForSelection,
-	isUrl,
-	normalizeUrl,
-	unwrapLink,
+  createNoteBoxEditor,
+  cloneContent,
+  ensureLinkForSelection,
+  isUrl,
+  normalizeUrl,
+  unwrapLink,
 } from "./editorUtils";
 import type {
-	CustomElement,
-	CustomText,
-	ListItemElement,
-	NoteEditor,
+  CustomElement,
+  CustomText,
+  ListItemElement,
+  NoteEditor,
 } from "./types";
 import { NoteBoxEditor } from "@/components/note-box/NoteBoxEditor";
 
 interface NoteBoxProps {
-	noteBox: NoteBoxType;
-	isSelected: boolean;
-	onSelect: () => void;
-	onFormatChange: (
-		callbacks: FormatCallbacks
-	) => void;
+  noteBox: NoteBoxType;
+  isSelected: boolean;
+  onSelect: () => void;
+  onFormatChange: (callbacks: FormatCallbacks) => void;
 }
 
 type FormatCallbacks = {
-	onBold: () => void;
-	onItalic: () => void;
-	onUnderline: () => void;
-	onStrikethrough: () => void;
-	onFontSize: (size: string) => void;
-	onParagraph: () => void;
-	onBulletList: () => void;
-	onNumberList: () => void;
-	onQuote: () => void;
-	onCode: () => void;
-	onCodeBlock: () => void;
-	onLink: () => void;
-	onUnlink: () => void;
-	onImage: () => void;
-	getCurrentFontSize: () => string;
-	isFormatActive: (format: string) => boolean;
+  onBold: () => void;
+  onItalic: () => void;
+  onUnderline: () => void;
+  onStrikethrough: () => void;
+  onFontSize: (size: string) => void;
+  onParagraph: () => void;
+  onBulletList: () => void;
+  onNumberList: () => void;
+  onQuote: () => void;
+  onCode: () => void;
+  onCodeBlock: () => void;
+  onLink: () => void;
+  onUnlink: () => void;
+  onImage: () => void;
+  getCurrentFontSize: () => string;
+  isFormatActive: (format: string) => boolean;
 };
 
-const extractPlainText = (
-	nodes: Descendant[]
-): string => {
-	const parts: string[] = [];
+const extractPlainText = (nodes: Descendant[]): string => {
+  const parts: string[] = [];
 
-	const visit = (node: Descendant) => {
-		if (SlateElement.isElement(node)) {
-			node.children.forEach(visit);
-		} else {
-			parts.push(node.text ?? "");
-		}
-	};
+  const visit = (node: Descendant) => {
+    if (SlateElement.isElement(node)) {
+      node.children.forEach(visit);
+    } else {
+      parts.push(node.text ?? "");
+    }
+  };
 
-	nodes.forEach(visit);
-	return parts.join("").trim();
+  nodes.forEach(visit);
+  return parts.join("").trim();
 };
 
 const PLACEHOLDER_TEXT = "Start typing...";
 
-const hasMeaningfulContent = (
-	content: Descendant[]
-): boolean => {
-	if (!content.length) {
-		return false;
-	}
-	const text = extractPlainText(content);
-	if (!text.length) {
-		return false;
-	}
-	return text !== PLACEHOLDER_TEXT;
+const hasMeaningfulContent = (content: Descendant[]): boolean => {
+  if (!content.length) {
+    return false;
+  }
+  const text = extractPlainText(content);
+  if (!text.length) {
+    return false;
+  }
+  return text !== PLACEHOLDER_TEXT;
 };
 
 export const NoteBox: React.FC<NoteBoxProps> = ({
-	noteBox,
-	isSelected,
-	onSelect,
-	onFormatChange,
+  noteBox,
+  isSelected,
+  onSelect,
+  onFormatChange,
 }) => {
-	const {
-		updateNoteBox,
-		bringToFront,
-		deleteNoteBox,
-		duplicateNoteBox,
-		sendToBack,
-		saveToHistory,
-		canvasTransform,
-		editingBoxId,
-		setEditingBox,
-	} = useBoardStore();
-	const editorRef =
-		useRef<HTMLDivElement | null>(null);
-	const contentRef =
-		useRef<HTMLDivElement | null>(null);
-	const headerRef =
-		useRef<HTMLDivElement | null>(null);
+  const {
+    updateNoteBox,
+    bringToFront,
+    deleteNoteBox,
+    duplicateNoteBox,
+    sendToBack,
+    saveToHistory,
+    canvasTransform,
+    editingBoxId,
+    setEditingBox,
+  } = useBoardStore();
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
 
-	// Use global editing state
-	const isEditing = editingBoxId === noteBox.id;
+  // Local state for smooth drag/resize without waiting on global store updates
+  const [localSize, setLocalSize] = useState({
+    width: noteBox.width,
+    height: noteBox.height,
+  });
+  const [localPosition, setLocalPosition] = useState({
+    x: noteBox.x,
+    y: noteBox.y,
+  });
 
-	const editor = useMemo<NoteEditor>(
-		() => createNoteBoxEditor(),
-		[]
-	);
-	const [value, setValue] = useState<
-		Descendant[]
-	>(() => cloneContent(noteBox.content));
+  // Keep local state in sync when store-driven values change (e.g. undo, remote updates)
+  useEffect(() => {
+    setLocalSize({
+      width: noteBox.width,
+      height: noteBox.height,
+    });
+    setLocalPosition({
+      x: noteBox.x,
+      y: noteBox.y,
+    });
+  }, [noteBox.width, noteBox.height, noteBox.x, noteBox.y]);
 
-	const isMarkActive = useCallback(
-		(format: string) => {
-			const marks = Editor.marks(editor);
-			return marks
-				? marks[
-						format as keyof CustomText
-				  ] === true
-				: false;
-		},
-		[editor]
-	);
+  // Use global editing state
+  const isEditing = editingBoxId === noteBox.id;
 
-	const isBlockActive = useCallback(
-		(format: string) => {
-			const { selection } = editor;
-			if (!selection) return false;
+  const editor = useMemo<NoteEditor>(() => createNoteBoxEditor(), []);
+  const [value, setValue] = useState<Descendant[]>(() =>
+    cloneContent(noteBox.content),
+  );
 
-			const [match] = Array.from(
-				Editor.nodes(editor, {
-					at: Editor.unhangRange(
-						editor,
-						selection
-					),
-					match: (n) =>
-						!Editor.isEditor(n) &&
-						SlateElement.isElement(
-							n
-						) &&
-						(n as CustomElement)
-							.type === format,
-				})
-			);
+  const isMarkActive = useCallback(
+    (format: string) => {
+      const marks = Editor.marks(editor);
+      return marks ? marks[format as keyof CustomText] === true : false;
+    },
+    [editor],
+  );
 
-			return !!match;
-		},
-		[editor]
-	);
+  const isBlockActive = useCallback(
+    (format: string) => {
+      const { selection } = editor;
+      if (!selection) return false;
 
-	const toggleMark = useCallback(
-		(format: string) => {
-			const isActive = isMarkActive(format);
-			if (isActive) {
-				Editor.removeMark(editor, format);
-			} else {
-				Editor.addMark(
-					editor,
-					format,
-					true
-				);
-			}
-		},
-		[editor, isMarkActive]
-	);
+      const [match] = Array.from(
+        Editor.nodes(editor, {
+          at: Editor.unhangRange(editor, selection),
+          match: (n) =>
+            !Editor.isEditor(n) &&
+            SlateElement.isElement(n) &&
+            (n as CustomElement).type === format,
+        }),
+      );
 
-	const toggleBlock = useCallback(
-		(format: CustomElement["type"]) => {
-			const isActive =
-				isBlockActive(format);
-			const isList =
-				format === "numbered-list" ||
-				format === "bulleted-list";
+      return !!match;
+    },
+    [editor],
+  );
 
-			Transforms.unwrapNodes(editor, {
-				match: (n) =>
-					!Editor.isEditor(n) &&
-					SlateElement.isElement(n) &&
-					((n as CustomElement).type ===
-						"numbered-list" ||
-						(n as CustomElement)
-							.type ===
-							"bulleted-list"),
-				split: true,
-			});
+  const toggleMark = useCallback(
+    (format: string) => {
+      const isActive = isMarkActive(format);
+      if (isActive) {
+        Editor.removeMark(editor, format);
+      } else {
+        Editor.addMark(editor, format, true);
+      }
+    },
+    [editor, isMarkActive],
+  );
 
-			const nextType: CustomElement["type"] =
-				isActive
-					? "paragraph"
-					: isList
-					? "list-item"
-					: format;
+  const toggleBlock = useCallback(
+    (format: CustomElement["type"]) => {
+      const isActive = isBlockActive(format);
+      const isList = format === "numbered-list" || format === "bulleted-list";
 
-			Transforms.setNodes<CustomElement>(
-				editor,
-				{
-					type: nextType,
-				}
-			);
+      Transforms.unwrapNodes(editor, {
+        match: (n) =>
+          !Editor.isEditor(n) &&
+          SlateElement.isElement(n) &&
+          ((n as CustomElement).type === "numbered-list" ||
+            (n as CustomElement).type === "bulleted-list"),
+        split: true,
+      });
 
-			if (!isActive && isList) {
-				const listBlock: CustomElement =
-					format === "bulleted-list"
-						? {
-								type: "bulleted-list",
-								children:
-									[] as ListItemElement[],
-						  }
-						: {
-								type: "numbered-list",
-								children:
-									[] as ListItemElement[],
-						  };
-				Transforms.wrapNodes(
-					editor,
-					listBlock
-				);
-			}
-		},
-		[editor, isBlockActive]
-	);
+      const nextType: CustomElement["type"] = isActive
+        ? "paragraph"
+        : isList
+          ? "list-item"
+          : format;
 
-	const insertLink = useCallback(() => {
-		const input = window.prompt(
-			"Enter the URL:"
-		);
-		if (!input) return;
+      Transforms.setNodes<CustomElement>(editor, {
+        type: nextType,
+      });
 
-		const normalized = normalizeUrl(input);
+      if (!isActive && isList) {
+        const listBlock: CustomElement =
+          format === "bulleted-list"
+            ? {
+                type: "bulleted-list",
+                children: [] as ListItemElement[],
+              }
+            : {
+                type: "numbered-list",
+                children: [] as ListItemElement[],
+              };
+        Transforms.wrapNodes(editor, listBlock);
+      }
+    },
+    [editor, isBlockActive],
+  );
 
-		if (!isUrl(normalized)) {
-			window.alert(
-				"Please enter a valid URL."
-			);
-			return;
-		}
+  const insertLink = useCallback(() => {
+    const input = window.prompt("Enter the URL:");
+    if (!input) return;
 
-		ensureLinkForSelection(
-			editor,
-			normalized
-		);
-	}, [editor]);
+    const normalized = normalizeUrl(input);
 
-	const removeLink = useCallback(() => {
-		unwrapLink(editor);
-	}, [editor]);
+    if (!isUrl(normalized)) {
+      window.alert("Please enter a valid URL.");
+      return;
+    }
 
-	const insertImage = useCallback(() => {
-		const input =
-			document.createElement("input");
-		input.type = "file";
-		input.accept = "image/*";
-		input.onchange = (e) => {
-			const file = (
-				e.target as HTMLInputElement
-			).files?.[0];
-			if (file) {
-				const reader = new FileReader();
-				reader.onload = () => {
-					const url =
-						reader.result as string;
-					const imageElement: CustomElement =
-						{
-							type: "image",
-							url,
-							children: [
-								{ text: "" },
-							],
-						};
-					Transforms.insertNodes(
-						editor,
-						imageElement
-					);
-				};
-				reader.readAsDataURL(file);
-			}
-		};
-		input.click();
-	}, [editor]);
+    ensureLinkForSelection(editor, normalized);
+  }, [editor]);
 
-	const formatCallbacks =
-		useMemo<FormatCallbacks>(
-			() => ({
-				onBold: () => toggleMark("bold"),
-				onItalic: () =>
-					toggleMark("italic"),
-				onUnderline: () =>
-					toggleMark("underline"),
-				onStrikethrough: () =>
-					toggleMark("strikethrough"),
-				onFontSize: (size: string) => {
-					Editor.removeMark(
-						editor,
-						"fontSize"
-					);
-					const fontSize = parseInt(
-						size,
-						10
-					);
-					if (
-						!Number.isNaN(fontSize) &&
-						fontSize !== 14
-					) {
-						Editor.addMark(
-							editor,
-							"fontSize",
-							fontSize
-						);
-					}
-				},
-				onParagraph: () =>
-					toggleBlock("paragraph"),
-				onBulletList: () =>
-					toggleBlock("bulleted-list"),
-				onNumberList: () =>
-					toggleBlock("numbered-list"),
-				onQuote: () =>
-					toggleBlock("block-quote"),
-				onCode: () => toggleMark("code"),
-				onCodeBlock: () =>
-					toggleBlock("code-block"),
-				onLink: insertLink,
-				onUnlink: removeLink,
-				onImage: insertImage,
-				getCurrentFontSize: () => {
-					const marks =
-						Editor.marks(editor);
-					if (
-						!marks ||
-						!marks.fontSize
-					) {
-						return "14";
-					}
-					return marks.fontSize.toString();
-				},
-				isFormatActive: (
-					format: string
-				) => {
-					if (
-						[
-							"bold",
-							"italic",
-							"underline",
-							"strikethrough",
-							"code",
-						].includes(format)
-					) {
-						return isMarkActive(
-							format
-						);
-					}
-					return isBlockActive(format);
-				},
-			}),
-			[
-				editor,
-				insertImage,
-				insertLink,
-				isBlockActive,
-				isMarkActive,
-				removeLink,
-				toggleBlock,
-				toggleMark,
-			]
-		);
+  const removeLink = useCallback(() => {
+    unwrapLink(editor);
+  }, [editor]);
 
-	const adjustHeightToContent =
-		useCallback(() => {
-			const editorEl = editorRef.current;
-			const contentEl = contentRef.current;
-			const headerEl = headerRef.current;
-			if (!editorEl || !contentEl) return;
+  const insertImage = useCallback(() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const url = reader.result as string;
+          const imageElement: CustomElement = {
+            type: "image",
+            url,
+            children: [{ text: "" }],
+          };
+          Transforms.insertNodes(editor, imageElement);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  }, [editor]);
 
-			const style =
-				window.getComputedStyle(
-					contentEl
-				);
-			const paddingTop =
-				parseFloat(style.paddingTop) || 0;
-			const paddingBottom =
-				parseFloat(style.paddingBottom) ||
-				0;
-			const headerHeight =
-				headerEl?.offsetHeight ??
-				NOTEBOX_HEADER_HEIGHT;
+  const formatCallbacks = useMemo<FormatCallbacks>(
+    () => ({
+      onBold: () => toggleMark("bold"),
+      onItalic: () => toggleMark("italic"),
+      onUnderline: () => toggleMark("underline"),
+      onStrikethrough: () => toggleMark("strikethrough"),
+      onFontSize: (size: string) => {
+        Editor.removeMark(editor, "fontSize");
+        const fontSize = parseInt(size, 10);
+        if (!Number.isNaN(fontSize) && fontSize !== 14) {
+          Editor.addMark(editor, "fontSize", fontSize);
+        }
+      },
+      onParagraph: () => toggleBlock("paragraph"),
+      onBulletList: () => toggleBlock("bulleted-list"),
+      onNumberList: () => toggleBlock("numbered-list"),
+      onQuote: () => toggleBlock("block-quote"),
+      onCode: () => toggleMark("code"),
+      onCodeBlock: () => toggleBlock("code-block"),
+      onLink: insertLink,
+      onUnlink: removeLink,
+      onImage: insertImage,
+      getCurrentFontSize: () => {
+        const marks = Editor.marks(editor);
+        if (!marks || !marks.fontSize) {
+          return "14";
+        }
+        return marks.fontSize.toString();
+      },
+      isFormatActive: (format: string) => {
+        if (
+          ["bold", "italic", "underline", "strikethrough", "code"].includes(
+            format,
+          )
+        ) {
+          return isMarkActive(format);
+        }
+        return isBlockActive(format);
+      },
+    }),
+    [
+      editor,
+      insertImage,
+      insertLink,
+      isBlockActive,
+      isMarkActive,
+      removeLink,
+      toggleBlock,
+      toggleMark,
+    ],
+  );
 
-			const editorHeight =
-				editorEl.scrollHeight;
-			const desiredHeight = Math.ceil(
-				editorHeight +
-					paddingTop +
-					paddingBottom +
-					headerHeight
-			);
-			const minHeight =
-				DEFAULT_NOTEBOX_HEIGHT;
-			const nextHeight = Math.max(
-				minHeight,
-				desiredHeight
-			);
+  const adjustHeightToContent = useCallback(() => {
+    const editorEl = editorRef.current;
+    const contentEl = contentRef.current;
+    const headerEl = headerRef.current;
+    if (!editorEl || !contentEl) return;
 
-			if (
-				Math.abs(
-					nextHeight - noteBox.height
-				) > 1
-			) {
-				updateNoteBox(noteBox.id, {
-					height: nextHeight,
-				});
-			}
-		}, [
-			noteBox.height,
-			noteBox.id,
-			updateNoteBox,
-		]);
+    const style = window.getComputedStyle(contentEl);
+    const paddingTop = parseFloat(style.paddingTop) || 0;
+    const paddingBottom = parseFloat(style.paddingBottom) || 0;
+    const headerHeight = headerEl?.offsetHeight ?? NOTEBOX_HEADER_HEIGHT;
 
-	useEffect(() => {
-		const raf = requestAnimationFrame(
-			adjustHeightToContent
-		);
-		return () => cancelAnimationFrame(raf);
-	}, [
-		value,
-		isEditing,
-		noteBox.width,
-		noteBox.content,
-		adjustHeightToContent,
-	]);
+    const editorHeight = editorEl.scrollHeight;
+    const desiredHeight = Math.ceil(
+      editorHeight + paddingTop + paddingBottom + headerHeight,
+    );
+    const minHeight = DEFAULT_NOTEBOX_HEIGHT;
+    const nextHeight = Math.max(minHeight, desiredHeight);
 
-	const editorSelection = editor.selection;
+    if (Math.abs(nextHeight - noteBox.height) > 1) {
+      updateNoteBox(noteBox.id, {
+        height: nextHeight,
+      });
+    }
+  }, [noteBox.height, noteBox.id, updateNoteBox]);
 
-	useEffect(() => {
-		if (isSelected) {
-			onFormatChange(formatCallbacks);
-		}
-	}, [
-		isSelected,
-		formatCallbacks,
-		onFormatChange,
-		editorSelection,
-	]);
+  useEffect(() => {
+    const raf = requestAnimationFrame(adjustHeightToContent);
+    return () => cancelAnimationFrame(raf);
+  }, [
+    value,
+    isEditing,
+    localSize.width,
+    noteBox.content,
+    adjustHeightToContent,
+  ]);
 
-	const handleChange = useCallback(
-		(newValue: Descendant[]) => {
-			const clonedValue =
-				cloneContent(newValue);
-			setValue(clonedValue);
-			updateNoteBox(noteBox.id, {
-				content: clonedValue,
-			});
-			requestAnimationFrame(
-				adjustHeightToContent
-			);
-		},
-		[
-			noteBox.id,
-			updateNoteBox,
-			adjustHeightToContent,
-		]
-	);
+  const editorSelection = editor.selection;
 
-	const contentsAreEqual = useCallback(
-		(a: Descendant[], b: Descendant[]) => {
-			if (a === b) return true;
-			if (!a || !b) return false;
-			return (
-				JSON.stringify(a) ===
-				JSON.stringify(b)
-			);
-		},
-		[]
-	);
+  useEffect(() => {
+    if (isSelected) {
+      onFormatChange(formatCallbacks);
+    }
+  }, [isSelected, formatCallbacks, onFormatChange, editorSelection]);
 
-	useEffect(() => {
-		if (isEditing) {
-			return;
-		}
+  const handleChange = useCallback(
+    (newValue: Descendant[]) => {
+      const clonedValue = cloneContent(newValue);
+      setValue(clonedValue);
+      updateNoteBox(noteBox.id, {
+        content: clonedValue,
+      });
+      requestAnimationFrame(adjustHeightToContent);
+    },
+    [noteBox.id, updateNoteBox, adjustHeightToContent],
+  );
 
-		if (
-			!contentsAreEqual(
-				value,
-				noteBox.content
-			)
-		) {
-			const cloned = cloneContent(
-				noteBox.content
-			);
-			setValue(cloned);
-			if (
-				!contentsAreEqual(
-					editor.children as Descendant[],
-					cloned
-				)
-			) {
-				editor.children = cloned;
-				editor.onChange();
-			}
-		}
-	}, [
-		noteBox.content,
-		isEditing,
-		contentsAreEqual,
-		value,
-		editor,
-	]);
+  const contentsAreEqual = useCallback((a: Descendant[], b: Descendant[]) => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    return JSON.stringify(a) === JSON.stringify(b);
+  }, []);
 
-	useEffect(() => {
-		if (!isEditing) {
-			return;
-		}
+  useEffect(() => {
+    if (isEditing) {
+      return;
+    }
 
-		const cloned = cloneContent(
-			noteBox.content
-		);
+    if (!contentsAreEqual(value, noteBox.content)) {
+      const cloned = cloneContent(noteBox.content);
+      setValue(cloned);
+      if (!contentsAreEqual(editor.children as Descendant[], cloned)) {
+        editor.children = cloned;
+        editor.onChange();
+      }
+    }
+  }, [noteBox.content, isEditing, contentsAreEqual, value, editor]);
 
-		if (!contentsAreEqual(value, cloned)) {
-			setValue(cloned);
-		}
+  useEffect(() => {
+    if (!isEditing) {
+      return;
+    }
 
-		if (
-			!contentsAreEqual(
-				editor.children as Descendant[],
-				cloned
-			)
-		) {
-			editor.children = cloned;
-			editor.onChange();
-		}
-	}, [
-		isEditing,
-		noteBox.content,
-		editor,
-		contentsAreEqual,
-		value,
-	]);
+    const cloned = cloneContent(noteBox.content);
 
-	useEffect(() => {
-		setValue(cloneContent(noteBox.content));
-	}, [noteBox.id, noteBox.content]);
+    if (!contentsAreEqual(value, cloned)) {
+      setValue(cloned);
+    }
 
-	const handleKeyDown = (
-		event: React.KeyboardEvent
-	) => {
-		if (event.key === "Escape") {
-			setEditingBox(null);
-			if (editorRef.current) {
-				editorRef.current.blur();
-			}
-		} else if (
-			(event.key === "Delete" ||
-				event.key === "Backspace") &&
-			!isEditing
-		) {
-			// Delete the note box when Delete/Backspace is pressed and not editing text
-			event.preventDefault();
-			const hasContent =
-				hasMeaningfulContent(
-					noteBox.content
-				);
-			if (hasContent) {
-				if (
-					confirm(
-						"Delete this note box?"
-					)
-				) {
-					deleteNoteBox(noteBox.id);
-				}
-			} else {
-				deleteNoteBox(noteBox.id);
-			}
-		}
-	};
+    if (!contentsAreEqual(editor.children as Descendant[], cloned)) {
+      editor.children = cloned;
+      editor.onChange();
+    }
+  }, [isEditing, noteBox.content, editor, contentsAreEqual, value]);
 
-	const handleContextMenu = (
-		e: React.MouseEvent
-	) => {
-		e.preventDefault();
+  useEffect(() => {
+    setValue(cloneContent(noteBox.content));
+  }, [noteBox.id, noteBox.content]);
 
-		// Remove any existing context menus
-		const existingMenus =
-			document.querySelectorAll(
-				".context-menu-noteBox"
-			);
-		existingMenus.forEach((menu) =>
-			menu.remove()
-		);
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Escape") {
+      setEditingBox(null);
+      if (editorRef.current) {
+        editorRef.current.blur();
+      }
+    } else if (
+      (event.key === "Delete" || event.key === "Backspace") &&
+      !isEditing
+    ) {
+      // Delete the note box when Delete/Backspace is pressed and not editing text
+      event.preventDefault();
+      const hasContent = hasMeaningfulContent(noteBox.content);
+      if (hasContent) {
+        if (confirm("Delete this note box?")) {
+          deleteNoteBox(noteBox.id);
+        }
+      } else {
+        deleteNoteBox(noteBox.id);
+      }
+    }
+  };
 
-		const menu =
-			document.createElement("div");
-		menu.className =
-			"context-menu-noteBox fixed bg-card border border-border rounded shadow-lg p-1 z-50";
-		menu.style.left = `${e.clientX}px`;
-		menu.style.top = `${e.clientY}px`;
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
 
-		const actions: Array<{
-			label: string;
-			action: () => void;
-		}> = [
-			{
-				label: "Duplicate",
-				action: () =>
-					duplicateNoteBox(noteBox.id),
-			},
-			{
-				label: "Bring to Front",
-				action: () =>
-					bringToFront(noteBox.id),
-			},
-			{
-				label: "Send to Back",
-				action: () =>
-					sendToBack(noteBox.id),
-			},
-			{
-				label: "Delete",
-				action: () => {
-					const hasContent =
-						hasMeaningfulContent(
-							noteBox.content
-						);
-					if (hasContent) {
-						if (
-							confirm(
-								"Delete this note box?"
-							)
-						) {
-							deleteNoteBox(
-								noteBox.id
-							);
-						}
-					} else {
-						deleteNoteBox(noteBox.id);
-					}
-				},
-			},
-		];
+    // Remove any existing context menus
+    const existingMenus = document.querySelectorAll(".context-menu-noteBox");
+    existingMenus.forEach((menu) => menu.remove());
 
-		actions.forEach((action) => {
-			const button =
-				document.createElement("button");
-			button.className =
-				"block w-full text-left px-2 py-1 hover:bg-accent rounded text-sm";
-			button.textContent = action.label;
-			button.onclick = () => {
-				action.action();
-				document.body.removeChild(menu);
-			};
-			menu.appendChild(button);
-		});
+    const menu = document.createElement("div");
+    menu.className =
+      "context-menu-noteBox fixed bg-card border border-border rounded shadow-lg p-1 z-50";
+    menu.style.left = `${e.clientX}px`;
+    menu.style.top = `${e.clientY}px`;
 
-		document.body.appendChild(menu);
+    const actions: Array<{
+      label: string;
+      action: () => void;
+    }> = [
+      {
+        label: "Duplicate",
+        action: () => duplicateNoteBox(noteBox.id),
+      },
+      {
+        label: "Bring to Front",
+        action: () => bringToFront(noteBox.id),
+      },
+      {
+        label: "Send to Back",
+        action: () => sendToBack(noteBox.id),
+      },
+      {
+        label: "Delete",
+        action: () => {
+          const hasContent = hasMeaningfulContent(noteBox.content);
+          if (hasContent) {
+            if (confirm("Delete this note box?")) {
+              deleteNoteBox(noteBox.id);
+            }
+          } else {
+            deleteNoteBox(noteBox.id);
+          }
+        },
+      },
+    ];
 
-		const cleanup = () => {
-			if (document.body.contains(menu)) {
-				document.body.removeChild(menu);
-			}
-			document.removeEventListener(
-				"click",
-				cleanup
-			);
-		};
+    actions.forEach((action) => {
+      const button = document.createElement("button");
+      button.className =
+        "block w-full text-left px-2 py-1 hover:bg-accent rounded text-sm";
+      button.textContent = action.label;
+      button.onclick = () => {
+        action.action();
+        document.body.removeChild(menu);
+      };
+      menu.appendChild(button);
+    });
 
-		setTimeout(
-			() =>
-				document.addEventListener(
-					"click",
-					cleanup
-				),
-			0
-		);
-	};
+    document.body.appendChild(menu);
 
-	return (
-		<Rnd
-			size={{
-				width: noteBox.width,
-				height: noteBox.height,
-			}}
-			position={{
-				x: noteBox.x,
-				y: noteBox.y,
-			}}
-			enableResizing={{
-				top: false,
-				bottom: false,
-				topRight: false,
-				bottomRight: false,
-				bottomLeft: false,
-				topLeft: false,
-				left: !isEditing,
-				right: !isEditing,
-			}}
-			onDrag={(e, d) => {
-				// No need to adjust coordinates - react-rnd already handles the scaling
-				updateNoteBox(noteBox.id, {
-					x: d.x,
-					y: d.y,
-				});
-			}}
-			onDragStop={(e, d) => {
-				updateNoteBox(noteBox.id, {
-					x: d.x,
-					y: d.y,
-				});
-				saveToHistory();
-			}}
-			onResize={(
-				e,
-				direction,
-				ref,
-				delta,
-				position
-			) => {
-				updateNoteBox(noteBox.id, {
-					width: parseInt(
-						ref.style.width
-					),
-					height: parseInt(
-						ref.style.height
-					),
-					x: position.x,
-					y: position.y,
-				});
-			}}
-			onResizeStop={(
-				e,
-				direction,
-				ref,
-				delta,
-				position
-			) => {
-				updateNoteBox(noteBox.id, {
-					width: parseInt(
-						ref.style.width
-					),
-					height: parseInt(
-						ref.style.height
-					),
-					x: position.x,
-					y: position.y,
-				});
-				saveToHistory();
-			}}
-			scale={canvasTransform.scale}
-			minWidth={200}
-			minHeight={DEFAULT_NOTEBOX_HEIGHT}
-			style={{
-				zIndex: noteBox.zIndex,
-				transition: "none",
-			}}
-			className={`rounded-lg border bg-card ${
-				isSelected
-					? "border-gray-400 shadow-md"
-					: "border-gray-200 hover:border-gray-300 hover:shadow-sm"
-			} ${
-				!isEditing
-					? "hover:cursor-move"
-					: ""
-			}`}
-			dragHandleClassName={
-				!isEditing ? "drag-handle" : ""
-			}
-			disableDragging={isEditing}
-			onMouseDown={() => {
-				if (!isEditing) {
-					onSelect();
-					bringToFront(noteBox.id);
-				}
-			}}
-			onContextMenu={handleContextMenu}>
-			<div className="flex flex-col">
-				<div
-					ref={headerRef}
-					className={`flex items-center justify-center px-3 py-2 text-xs text-muted-foreground ${
-						!isEditing
-							? "drag-handle cursor-move"
-							: "cursor-default"
-					}`}>
-					<div className="h-1.5 w-12 rounded-full bg-muted-foreground/40" />
-				</div>
-				<div
-					ref={contentRef}
-					className={`flex-1 px-3 py-2 cursor-text ${
-						!isEditing
-							? "hover:bg-accent/10 transition-colors"
-							: ""
-					}`}
-					onClick={(e) => {
-						if (!isEditing) {
-							if (
-								(
-									e.target as HTMLElement
-								).closest("a")
-							) {
-								return;
-							}
-							setEditingBox(
-								noteBox.id
-							);
-						}
-					}}
-					onDoubleClick={(e) => {
-						e.stopPropagation(); // Prevent creating new box when double-clicking on text box
-						if (
-							(
-								e.target as HTMLElement
-							).closest("a")
-						) {
-							return;
-						}
-						setEditingBox(noteBox.id);
-					}}>
-					<NoteBoxEditor
-						editor={editor}
-						slateKey={noteBox.id}
-						value={value}
-						isEditing={isEditing}
-						editorRef={editorRef}
-						onChange={handleChange}
-						onKeyDown={handleKeyDown}
-						onFocus={() =>
-							setEditingBox(
-								noteBox.id
-							)
-						}
-						onBlur={() =>
-							setEditingBox(null)
-						}
-					/>
-				</div>
-			</div>
-		</Rnd>
-	);
+    const cleanup = () => {
+      if (document.body.contains(menu)) {
+        document.body.removeChild(menu);
+      }
+      document.removeEventListener("click", cleanup);
+    };
+
+    setTimeout(() => document.addEventListener("click", cleanup), 0);
+  };
+
+  return (
+    <Rnd
+      size={localSize}
+      position={localPosition}
+      enableResizing={{
+        top: false,
+        bottom: false,
+        topRight: false,
+        bottomRight: false,
+        bottomLeft: false,
+        topLeft: false,
+        left: !isEditing,
+        right: !isEditing,
+      }}
+      onDrag={(e, d) => {
+        // Update local position for smooth dragging
+        setLocalPosition({
+          x: d.x,
+          y: d.y,
+        });
+      }}
+      onDragStop={(e, d) => {
+        setLocalPosition({
+          x: d.x,
+          y: d.y,
+        });
+        updateNoteBox(noteBox.id, {
+          x: d.x,
+          y: d.y,
+        });
+        saveToHistory();
+      }}
+      onResize={(e, direction, ref, delta, position) => {
+        // Update local size/position continuously while resizing for a smooth UX
+        const width = parseInt(ref.style.width, 10);
+        let height = localSize.height;
+        const editorEl = editorRef.current;
+        const contentEl = contentRef.current;
+        const headerEl = headerRef.current;
+        if (editorEl && contentEl) {
+          const style = window.getComputedStyle(contentEl);
+          const paddingTop = parseFloat(style.paddingTop) || 0;
+          const paddingBottom = parseFloat(style.paddingBottom) || 0;
+          const headerHeight = headerEl?.offsetHeight ?? NOTEBOX_HEADER_HEIGHT;
+          const editorHeight = editorEl.scrollHeight;
+          const desiredHeight = Math.ceil(
+            editorHeight + paddingTop + paddingBottom + headerHeight,
+          );
+          const minHeight = DEFAULT_NOTEBOX_HEIGHT;
+          height = Math.max(minHeight, desiredHeight);
+        }
+        setLocalSize({ width, height });
+        setLocalPosition({
+          x: position.x,
+          y: position.y,
+        });
+      }}
+      onResizeStop={(e, direction, ref, delta, position) => {
+        // Commit the last auto-calculated size/position to the store once resizing ends
+        const width = parseInt(ref.style.width, 10);
+        const height = localSize.height;
+        setLocalSize({ width, height });
+        setLocalPosition({
+          x: position.x,
+          y: position.y,
+        });
+        updateNoteBox(noteBox.id, {
+          width,
+          height,
+          x: position.x,
+          y: position.y,
+        });
+        saveToHistory();
+      }}
+      scale={canvasTransform.scale}
+      minWidth={200}
+      minHeight={DEFAULT_NOTEBOX_HEIGHT}
+      style={{
+        zIndex: noteBox.zIndex,
+        transition: "none",
+      }}
+      className={`rounded-lg border bg-card ${
+        isSelected
+          ? "border-gray-400 shadow-md"
+          : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
+      } ${!isEditing ? "hover:cursor-move" : ""}`}
+      dragHandleClassName={!isEditing ? "drag-handle" : ""}
+      disableDragging={isEditing}
+      onMouseDown={() => {
+        if (!isEditing) {
+          onSelect();
+          bringToFront(noteBox.id);
+        }
+      }}
+      onContextMenu={handleContextMenu}
+    >
+      <div className="flex flex-col">
+        <div
+          ref={headerRef}
+          className={`flex items-center justify-center px-3 py-2 text-xs text-muted-foreground ${
+            !isEditing ? "drag-handle cursor-move" : "cursor-default"
+          }`}
+        >
+          <div className="h-1.5 w-12 rounded-full bg-muted-foreground/40" />
+        </div>
+        <div
+          ref={contentRef}
+          className={`flex-1 px-3 py-2 cursor-text ${
+            !isEditing ? "hover:bg-accent/10 transition-colors" : ""
+          }`}
+          onClick={(e) => {
+            if (!isEditing) {
+              if ((e.target as HTMLElement).closest("a")) {
+                return;
+              }
+              setEditingBox(noteBox.id);
+            }
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation(); // Prevent creating new box when double-clicking on text box
+            if ((e.target as HTMLElement).closest("a")) {
+              return;
+            }
+            setEditingBox(noteBox.id);
+          }}
+        >
+          <NoteBoxEditor
+            editor={editor}
+            slateKey={noteBox.id}
+            value={value}
+            isEditing={isEditing}
+            editorRef={editorRef}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setEditingBox(noteBox.id)}
+            onBlur={() => setEditingBox(null)}
+          />
+        </div>
+      </div>
+    </Rnd>
+  );
 };

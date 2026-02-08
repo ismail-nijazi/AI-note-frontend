@@ -6,428 +6,311 @@ import { NoteBox } from "@/state/useBoardStore";
 export const DEFAULT_MODEL = "gpt-4.1-mini";
 
 class ApiService {
-	private buildUrl(endpoint: string): string {
-		return `${apiConfig.baseURL}${endpoint}`;
-	}
+  private buildUrl(endpoint: string): string {
+    return `${apiConfig.baseURL}${endpoint}`;
+  }
 
-	private buildConfig(
-		options: RequestInit = {}
-	): RequestInit {
-		return {
-			...options,
-			headers: {
-				...apiConfig.headers,
-				...options.headers,
-			},
-		};
-	}
+  private buildConfig(options: RequestInit = {}): RequestInit {
+    return {
+      ...options,
+      headers: {
+        ...apiConfig.headers,
+        ...options.headers,
+      },
+    };
+  }
 
-	private async request(
-		endpoint: string,
-		options: RequestInit = {}
-	): Promise<Response> {
-		const response = await fetch(
-			this.buildUrl(endpoint),
-			this.buildConfig(options)
-		);
+  private async request(
+    endpoint: string,
+    options: RequestInit = {},
+  ): Promise<Response> {
+    const response = await fetch(
+      this.buildUrl(endpoint),
+      this.buildConfig(options),
+    );
 
-		if (!response.ok) {
-			throw new Error(
-				`HTTP error! status: ${response.status}`
-			);
-		}
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-		return response;
-	}
+    return response;
+  }
 
-	async get(
-		endpoint: string,
-		options?: RequestInit
-	): Promise<Response> {
-		return fetch(
-			this.buildUrl(endpoint),
-			this.buildConfig({
-				method: "GET",
-				...options,
-			})
-		);
-	}
+  async get(endpoint: string, options?: RequestInit): Promise<Response> {
+    return fetch(
+      this.buildUrl(endpoint),
+      this.buildConfig({
+        method: "GET",
+        ...options,
+      }),
+    );
+  }
 
-	async post(
-		endpoint: string,
-		body?: unknown,
-		options?: RequestInit
-	): Promise<Response> {
-		const config = this.buildConfig({
-			method: "POST",
-			body:
-				body !== undefined
-					? JSON.stringify(body)
-					: undefined,
-			...options,
-		});
-		return fetch(
-			this.buildUrl(endpoint),
-			config
-		);
-	}
+  async post(
+    endpoint: string,
+    body?: unknown,
+    options?: RequestInit,
+  ): Promise<Response> {
+    const config = this.buildConfig({
+      method: "POST",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      ...options,
+    });
+    return fetch(this.buildUrl(endpoint), config);
+  }
 
-	async put(
-		endpoint: string,
-		body?: unknown,
-		options?: RequestInit
-	): Promise<Response> {
-		const config = this.buildConfig({
-			method: "PUT",
-			body:
-				body !== undefined
-					? JSON.stringify(body)
-					: undefined,
-			...options,
-		});
-		return fetch(
-			this.buildUrl(endpoint),
-			config
-		);
-	}
+  async put(
+    endpoint: string,
+    body?: unknown,
+    options?: RequestInit,
+  ): Promise<Response> {
+    const config = this.buildConfig({
+      method: "PUT",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      ...options,
+    });
+    return fetch(this.buildUrl(endpoint), config);
+  }
 
-	async delete(
-		endpoint: string,
-		options?: RequestInit
-	): Promise<Response> {
-		return fetch(
-			this.buildUrl(endpoint),
-			this.buildConfig({
-				method: "DELETE",
-				...options,
-			})
-		);
-	}
+  async delete(endpoint: string, options?: RequestInit): Promise<Response> {
+    return fetch(
+      this.buildUrl(endpoint),
+      this.buildConfig({
+        method: "DELETE",
+        ...options,
+      }),
+    );
+  }
 
-	// AI endpoints
-	async generateAI(
-		messages: ChatMessage[],
-		context?: AIContext,
-		options?: {
-			model?: string;
-			maxTokens?: number;
-			temperature?: number;
-			stream?: boolean;
-		}
-	): Promise<Response> {
-		// Transform messages to backend format: only role and content, filter empty content
-		const transformedMessages = messages
-			.map((msg) => {
-				let content = "";
-				if (
-					typeof msg.content ===
-					"string"
-				) {
-					content = msg.content.trim();
-				} else if (
-					typeof msg.content ===
-						"number" ||
-					typeof msg.content ===
-						"boolean"
-				) {
-					content = String(msg.content);
-				}
-				return {
-					role: msg.role,
-					content,
-				};
-			})
-			.filter(
-				(msg) => msg.content.length > 0
-			); // Remove messages with empty content
+  // AI endpoints
+  async generateAI(
+    messages: ChatMessage[],
+    context?: AIContext,
+    options?: {
+      model?: string;
+      maxTokens?: number;
+      temperature?: number;
+      stream?: boolean;
+    },
+  ): Promise<Response> {
+    // Transform messages to backend format: only role and content, filter empty content
+    const transformedMessages = messages
+      .map((msg) => {
+        let content = "";
+        if (typeof msg.content === "string") {
+          content = msg.content.trim();
+        } else if (
+          typeof msg.content === "number" ||
+          typeof msg.content === "boolean"
+        ) {
+          content = String(msg.content);
+        }
+        return {
+          role: msg.role,
+          content,
+        };
+      })
+      .filter((msg) => msg.content.length > 0); // Remove messages with empty content
 
-		if (transformedMessages.length === 0) {
-			throw new Error(
-				"No valid messages to send"
-			);
-		}
+    if (transformedMessages.length === 0) {
+      throw new Error("No valid messages to send");
+    }
 
-		const response = await fetch(
-			`${apiConfig.baseURL}/ai/generate`,
-			{
-				method: "POST",
-				headers: apiConfig.headers,
-				body: JSON.stringify({
-					messages: transformedMessages,
-					context,
-					includeContext: true,
-					model:
-						options?.model ||
-						DEFAULT_MODEL,
-					maxTokens:
-						options?.maxTokens ||
-						4000,
-					temperature:
-						options?.temperature ||
-						0.7,
-					stream:
-						options?.stream !== false, // default to true
-				}),
-			}
-		);
+    const response = await fetch(`${apiConfig.baseURL}/ai/generate`, {
+      method: "POST",
+      headers: apiConfig.headers,
+      body: JSON.stringify({
+        messages: transformedMessages,
+        context,
+        includeContext: true,
+        model: options?.model || DEFAULT_MODEL,
+        maxTokens: options?.maxTokens || 4000,
+        temperature: options?.temperature || 0.7,
+        stream: options?.stream !== false, // default to true
+      }),
+    });
 
-		if (!response.ok) {
-			let errorMessage = `AI generation failed: ${response.status}`;
-			let errorCode =
-				"AI_GENERATION_FAILED";
+    if (!response.ok) {
+      let errorMessage = `AI generation failed: ${response.status}`;
+      let errorCode = "AI_GENERATION_FAILED";
 
-			try {
-				// Try to extract error message from response body
-				const contentType =
-					response.headers.get(
-						"content-type"
-					);
-				if (
-					contentType?.includes(
-						"application/json"
-					)
-				) {
-					const errorData =
-						await response.json();
-					errorMessage =
-						errorData.error
-							?.message ||
-						errorData.message ||
-						errorMessage;
-					errorCode =
-						errorData.error?.code ||
-						errorCode;
-				} else {
-					const text =
-						await response.text();
-					if (text) {
-						errorMessage = text;
-					}
-				}
-			} catch {
-				// If we can't parse the error, use the status-based message
-			}
+      try {
+        // Try to extract error message from response body
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+          const errorData = await response.json();
+          errorMessage =
+            errorData.error?.message || errorData.message || errorMessage;
+          errorCode = errorData.error?.code || errorCode;
+        } else {
+          const text = await response.text();
+          if (text) {
+            errorMessage = text;
+          }
+        }
+      } catch {
+        // If we can't parse the error, use the status-based message
+      }
 
-			const error = new Error(
-				errorMessage
-			) as Error & {
-				code?: string;
-				status?: number;
-			};
-			error.code = errorCode;
-			error.status = response.status;
-			throw error;
-		}
+      const error = new Error(errorMessage) as Error & {
+        code?: string;
+        status?: number;
+      };
+      error.code = errorCode;
+      error.status = response.status;
+      throw error;
+    }
 
-		return response;
-	}
+    return response;
+  }
 
-	async getAIModels(): Promise<Response> {
-		return this.request("/ai/models");
-	}
+  async getAIModels(): Promise<Response> {
+    return this.request("/ai/models");
+  }
 
-	async getAIHealth(): Promise<Response> {
-		return this.request("/ai/health");
-	}
+  async getAIHealth(): Promise<Response> {
+    return this.request("/ai/health");
+  }
 
-	// Notes endpoints
-	async getNotes(params?: {
-		page?: number;
-		limit?: number;
-		collectionId?: string;
-		sortBy?: string;
-		sortOrder?: string;
-	}): Promise<Response> {
-		const query = new URLSearchParams();
-		if (params?.page)
-			query.append(
-				"page",
-				params.page.toString()
-			);
-		if (params?.limit)
-			query.append(
-				"limit",
-				params.limit.toString()
-			);
-		if (params?.collectionId)
-			query.append(
-				"collectionId",
-				params.collectionId
-			);
-		if (params?.sortBy)
-			query.append("sortBy", params.sortBy);
-		if (params?.sortOrder)
-			query.append(
-				"sortOrder",
-				params.sortOrder
-			);
+  // Notes endpoints
+  async getNotes(params?: {
+    page?: number;
+    limit?: number;
+    collectionId?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<Response> {
+    const query = new URLSearchParams();
+    if (params?.page) query.append("page", params.page.toString());
+    if (params?.limit) query.append("limit", params.limit.toString());
+    if (params?.collectionId) query.append("collectionId", params.collectionId);
+    if (params?.sortBy) query.append("sortBy", params.sortBy);
+    if (params?.sortOrder) query.append("sortOrder", params.sortOrder);
 
-		return this.request(
-			`/notes?${query.toString()}`
-		);
-	}
+    return this.request(`/notes?${query.toString()}`);
+  }
 
-	async getNote(id: string): Promise<Response> {
-		return this.request(`/notes/${id}`);
-	}
+  async getNote(id: string): Promise<Response> {
+    return this.request(`/notes/${id}`);
+  }
 
-	async createNote(note: {
-		title: string;
-		content: NoteBox[];
-		collectionId?: string;
-	}): Promise<Response> {
-		return this.request("/notes", {
-			method: "POST",
-			body: JSON.stringify(note),
-		});
-	}
+  async createNote(note: {
+    title: string;
+    content: NoteBox[];
+    collectionId?: string;
+  }): Promise<Response> {
+    return this.request("/notes", {
+      method: "POST",
+      body: JSON.stringify(note),
+    });
+  }
 
-	async updateNote(
-		id: string,
-		note: {
-			title?: string;
-			content?: NoteBox[];
-			version: number;
-		}
-	): Promise<Response> {
-		return this.request(`/notes/${id}`, {
-			method: "PUT",
-			body: JSON.stringify(note),
-		}).catch((e) => {
-			console.log("e", e);
-			throw e;
-		});
-	}
+  async updateNote(
+    id: string,
+    note: {
+      title?: string;
+      content?: NoteBox[];
+      version: number;
+    },
+  ): Promise<Response> {
+    return this.request(`/notes/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(note),
+    }).catch((e) => {
+      console.log("e", e);
+      throw e;
+    });
+  }
 
-	async deleteNote(
-		id: string
-	): Promise<Response> {
-		return this.request(`/notes/${id}`, {
-			method: "DELETE",
-		});
-	}
+  async deleteNote(id: string): Promise<Response> {
+    return this.request(`/notes/${id}`, {
+      method: "DELETE",
+    });
+  }
 
-	async duplicateNote(
-		id: string,
-		data?: {
-			title?: string;
-			collectionId?: string;
-		}
-	): Promise<Response> {
-		return this.request(
-			`/notes/${id}/duplicate`,
-			{
-				method: "POST",
-				body: JSON.stringify(data || {}),
-			}
-		);
-	}
+  async duplicateNote(
+    id: string,
+    data?: {
+      title?: string;
+      collectionId?: string;
+    },
+  ): Promise<Response> {
+    return this.request(`/notes/${id}/duplicate`, {
+      method: "POST",
+      body: JSON.stringify(data || {}),
+    });
+  }
 
-	// Collections endpoints
-	async getCollections(params?: {
-		page?: number;
-		limit?: number;
-	}): Promise<Response> {
-		const query = new URLSearchParams();
-		if (params?.page)
-			query.append(
-				"page",
-				params.page.toString()
-			);
-		if (params?.limit)
-			query.append(
-				"limit",
-				params.limit.toString()
-			);
+  // Collections endpoints
+  async getCollections(params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<Response> {
+    const query = new URLSearchParams();
+    if (params?.page) query.append("page", params.page.toString());
+    if (params?.limit) query.append("limit", params.limit.toString());
 
-		return this.request(
-			`/collections?${query.toString()}`
-		);
-	}
+    return this.request(`/collections?${query.toString()}`);
+  }
 
-	async getCollection(
-		id: string
-	): Promise<Response> {
-		return this.request(`/collections/${id}`);
-	}
+  async getCollection(id: string): Promise<Response> {
+    return this.request(`/collections/${id}`);
+  }
 
-	async createCollection(collection: {
-		name: string;
-		description?: string;
-		color?: string;
-	}): Promise<Response> {
-		return this.request("/collections", {
-			method: "POST",
-			body: JSON.stringify(collection),
-		});
-	}
+  async createCollection(collection: {
+    name: string;
+    description?: string;
+    color?: string;
+  }): Promise<Response> {
+    return this.request("/collections", {
+      method: "POST",
+      body: JSON.stringify(collection),
+    });
+  }
 
-	async updateCollection(
-		id: string,
-		collection: {
-			name?: string;
-			description?: string;
-			color?: string;
-		}
-	): Promise<Response> {
-		return this.request(
-			`/collections/${id}`,
-			{
-				method: "PUT",
-				body: JSON.stringify(collection),
-			}
-		);
-	}
+  async updateCollection(
+    id: string,
+    collection: {
+      name?: string;
+      description?: string;
+      color?: string;
+    },
+  ): Promise<Response> {
+    return this.request(`/collections/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(collection),
+    });
+  }
 
-	async deleteCollection(
-		id: string
-	): Promise<Response> {
-		return this.request(
-			`/collections/${id}`,
-			{
-				method: "DELETE",
-			}
-		);
-	}
+  async deleteCollection(id: string): Promise<Response> {
+    return this.request(`/collections/${id}`, {
+      method: "DELETE",
+    });
+  }
 
-	// Media endpoints
-	async getMedia(params?: {
-		noteId?: string;
-		page?: number;
-		limit?: number;
-	}): Promise<Response> {
-		const query = new URLSearchParams();
-		if (params?.noteId)
-			query.append("noteId", params.noteId);
-		if (params?.page)
-			query.append(
-				"page",
-				params.page.toString()
-			);
-		if (params?.limit)
-			query.append(
-				"limit",
-				params.limit.toString()
-			);
+  // Media endpoints
+  async getMedia(params?: {
+    noteId?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<Response> {
+    const query = new URLSearchParams();
+    if (params?.noteId) query.append("noteId", params.noteId);
+    if (params?.page) query.append("page", params.page.toString());
+    if (params?.limit) query.append("limit", params.limit.toString());
 
-		return this.request(
-			`/media?${query.toString()}`
-		);
-	}
+    return this.request(`/media?${query.toString()}`);
+  }
 
-	async getMediaFile(
-		id: string
-	): Promise<Response> {
-		return this.request(`/media/${id}`);
-	}
+  async getMediaFile(id: string): Promise<Response> {
+    return this.request(`/media/${id}`);
+  }
 
-	async deleteMediaFile(
-		id: string
-	): Promise<Response> {
-		return this.request(`/media/${id}`, {
-			method: "DELETE",
-		});
-	}
+  async deleteMediaFile(id: string): Promise<Response> {
+    return this.request(`/media/${id}`, {
+      method: "DELETE",
+    });
+  }
 }
 
 export const apiService = new ApiService();

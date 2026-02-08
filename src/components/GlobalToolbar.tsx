@@ -1,18 +1,18 @@
-import React from 'react';
-import { 
-  Bold, 
-  Italic, 
-  Underline, 
-  Strikethrough, 
-  Type, 
-  List, 
-  ListOrdered, 
-  Quote, 
-  Code, 
-  Code2, 
-  Link, 
-  Image, 
-  Undo2, 
+import React from "react";
+import {
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  Type,
+  List,
+  ListOrdered,
+  Quote,
+  Code,
+  Code2,
+  Link,
+  Image,
+  Undo2,
   Redo2,
   Unlink,
   Menu,
@@ -20,16 +20,28 @@ import {
   User,
   Settings,
   LogOut,
-  HelpCircle
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useBoardStore } from '@/state/useBoardStore';
-import { useAuthStore } from '@/state/useAuthStore';
-import { useNavigate } from 'react-router-dom';
+  HelpCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useBoardStore } from "@/state/useBoardStore";
+import { useAuthStore } from "@/state/useAuthStore";
+import { useNavigate } from "react-router-dom";
 
 interface GlobalToolbarProps {
   onBold?: () => void;
@@ -71,7 +83,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
   onUnlink,
   onImage,
   isFormatActive = () => false,
-  getCurrentFontSize = () => 'normal',
+  getCurrentFontSize = () => "normal",
   leftSidebarOpen = true,
   rightSidebarOpen = true,
   onToggleLeftSidebar,
@@ -83,7 +95,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate("/");
   };
 
   const hasActiveEditor = !!selectedBoxId;
@@ -110,7 +122,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           size="sm"
           onClick={onBold}
           disabled={!hasActiveEditor}
-          className={`h-8 w-8 p-0 ${isFormatActive('bold') ? 'bg-accent' : ''}`}
+          className={`h-8 w-8 p-0 ${isFormatActive("bold") ? "bg-accent" : ""}`}
           title="Bold (Ctrl/⌘+B)"
           onMouseDown={(e) => e.preventDefault()} // Prevent losing focus
         >
@@ -121,7 +133,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           size="sm"
           onClick={onItalic}
           disabled={!hasActiveEditor}
-          className={`h-8 w-8 p-0 ${isFormatActive('italic') ? 'bg-accent' : ''}`}
+          className={`h-8 w-8 p-0 ${isFormatActive("italic") ? "bg-accent" : ""}`}
           title="Italic (Ctrl/⌘+I)"
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -132,7 +144,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           size="sm"
           onClick={onUnderline}
           disabled={!hasActiveEditor}
-          className={`h-8 w-8 p-0 ${isFormatActive('underline') ? 'bg-accent' : ''}`}
+          className={`h-8 w-8 p-0 ${isFormatActive("underline") ? "bg-accent" : ""}`}
           title="Underline (Ctrl/⌘+U)"
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -143,7 +155,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           size="sm"
           onClick={onStrikethrough}
           disabled={!hasActiveEditor}
-          className={`h-8 w-8 p-0 ${isFormatActive('strikethrough') ? 'bg-accent' : ''}`}
+          className={`h-8 w-8 p-0 ${isFormatActive("strikethrough") ? "bg-accent" : ""}`}
           title="Strikethrough"
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -160,15 +172,20 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           onValueChange={onFontSize}
           disabled={!hasActiveEditor}
         >
-          <SelectTrigger 
+          <SelectTrigger
             className="h-8 w-16 text-xs"
             onMouseDown={(e) => e.preventDefault()} // Prevent losing focus
           >
             <SelectValue placeholder="14" />
           </SelectTrigger>
           <SelectContent>
-            {[8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 40, 48, 56, 64].map(size => (
-              <SelectItem key={size} value={size.toString()}>{size}</SelectItem>
+            {[
+              8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 40, 48, 56,
+              64,
+            ].map((size) => (
+              <SelectItem key={size} value={size.toString()}>
+                {size}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -177,7 +194,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           size="sm"
           onClick={onParagraph}
           disabled={!hasActiveEditor}
-          className={`h-8 w-8 p-0 ${isFormatActive('paragraph') ? 'bg-accent' : ''}`}
+          className={`h-8 w-8 p-0 ${isFormatActive("paragraph") ? "bg-accent" : ""}`}
           title="Paragraph"
           onMouseDown={(e) => e.preventDefault()} // Prevent losing focus
         >
@@ -194,7 +211,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           size="sm"
           onClick={onBulletList}
           disabled={!hasActiveEditor}
-          className={`h-8 w-8 p-0 ${isFormatActive('bulleted-list') ? 'bg-accent' : ''}`}
+          className={`h-8 w-8 p-0 ${isFormatActive("bulleted-list") ? "bg-accent" : ""}`}
           title="Bullet List"
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -205,7 +222,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           size="sm"
           onClick={onNumberList}
           disabled={!hasActiveEditor}
-          className={`h-8 w-8 p-0 ${isFormatActive('numbered-list') ? 'bg-accent' : ''}`}
+          className={`h-8 w-8 p-0 ${isFormatActive("numbered-list") ? "bg-accent" : ""}`}
           title="Numbered List"
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -222,7 +239,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           size="sm"
           onClick={onQuote}
           disabled={!hasActiveEditor}
-          className={`h-8 w-8 p-0 ${isFormatActive('block-quote') ? 'bg-accent' : ''}`}
+          className={`h-8 w-8 p-0 ${isFormatActive("block-quote") ? "bg-accent" : ""}`}
           title="Quote"
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -233,7 +250,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           size="sm"
           onClick={onCode}
           disabled={!hasActiveEditor}
-          className={`h-8 w-8 p-0 ${isFormatActive('code') ? 'bg-accent' : ''}`}
+          className={`h-8 w-8 p-0 ${isFormatActive("code") ? "bg-accent" : ""}`}
           title="Inline Code"
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -244,7 +261,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
           size="sm"
           onClick={onCodeBlock}
           disabled={!hasActiveEditor}
-          className={`h-8 w-8 p-0 ${isFormatActive('code-block') ? 'bg-accent' : ''}`}
+          className={`h-8 w-8 p-0 ${isFormatActive("code-block") ? "bg-accent" : ""}`}
           title="Code Block"
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -340,7 +357,11 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
       {/* User Profile Dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 rounded-full"
+          >
             <Avatar className="h-7 w-7">
               <AvatarImage src="/placeholder.svg" alt={user?.name || "User"} />
               <AvatarFallback className="text-xs">
@@ -357,9 +378,9 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
             {user?.email || "user@example.com"}
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem 
+          <DropdownMenuItem
             className="cursor-pointer"
-            onClick={() => navigate('/settings')}
+            onClick={() => navigate("/settings")}
           >
             <Settings className="h-4 w-4 mr-2" />
             Settings
@@ -369,7 +390,7 @@ export const GlobalToolbar: React.FC<GlobalToolbarProps> = ({
             Help & Support
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem 
+          <DropdownMenuItem
             className="cursor-pointer text-destructive"
             onClick={handleLogout}
           >

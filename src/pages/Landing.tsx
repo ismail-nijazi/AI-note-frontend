@@ -1,17 +1,23 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  PenTool, 
-  Zap, 
-  Users, 
+import React from "react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  PenTool,
+  Zap,
+  Users,
   Cloud,
   ArrowRight,
   CheckCircle,
   Star,
-  MessageSquare
-} from 'lucide-react';
+  MessageSquare,
+} from "lucide-react";
 
 const Landing = () => {
   return (
@@ -43,8 +49,9 @@ const Landing = () => {
             Your Ideas, Beautifully Organized
           </h1>
           <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-            Create, organize, and collaborate on your notes with an infinite canvas. 
-            Perfect for brainstorming, project planning, and visual thinking.
+            Create, organize, and collaborate on your notes with an infinite
+            canvas. Perfect for brainstorming, project planning, and visual
+            thinking.
           </p>
           <div className="flex items-center justify-center space-x-4">
             <Link to="/app">
@@ -67,12 +74,15 @@ const Landing = () => {
       {/* Features Grid */}
       <section className="container mx-auto px-6 py-20">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold mb-4">Everything you need to think visually</h2>
+          <h2 className="text-3xl font-bold mb-4">
+            Everything you need to think visually
+          </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Powerful features designed to help you capture ideas, organize thoughts, and collaborate seamlessly.
+            Powerful features designed to help you capture ideas, organize
+            thoughts, and collaborate seamlessly.
           </p>
         </div>
-        
+
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader>
@@ -81,7 +91,8 @@ const Landing = () => {
               </div>
               <CardTitle>Infinite Canvas</CardTitle>
               <CardDescription>
-                Never run out of space. Create and organize notes on an endless canvas that grows with your ideas.
+                Never run out of space. Create and organize notes on an endless
+                canvas that grows with your ideas.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -93,7 +104,8 @@ const Landing = () => {
               </div>
               <CardTitle>Rich Text Editing</CardTitle>
               <CardDescription>
-                Format your notes with bold, italic, lists, links, and more. Express your ideas exactly as you envision them.
+                Format your notes with bold, italic, lists, links, and more.
+                Express your ideas exactly as you envision them.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -105,7 +117,8 @@ const Landing = () => {
               </div>
               <CardTitle>AI-Powered Assistant</CardTitle>
               <CardDescription>
-                Get help organizing your thoughts, generating ideas, and improving your content with our built-in AI chat.
+                Get help organizing your thoughts, generating ideas, and
+                improving your content with our built-in AI chat.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -117,7 +130,8 @@ const Landing = () => {
               </div>
               <CardTitle>Smart Collections</CardTitle>
               <CardDescription>
-                Organize your notes into collections and easily search through all your content to find what you need.
+                Organize your notes into collections and easily search through
+                all your content to find what you need.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -129,7 +143,8 @@ const Landing = () => {
               </div>
               <CardTitle>Auto-Save & Sync</CardTitle>
               <CardDescription>
-                Your work is automatically saved as you type. Never lose your ideas again with seamless cloud storage.
+                Your work is automatically saved as you type. Never lose your
+                ideas again with seamless cloud storage.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -141,7 +156,8 @@ const Landing = () => {
               </div>
               <CardTitle>Intuitive Interface</CardTitle>
               <CardDescription>
-                Clean, distraction-free design that gets out of your way. Focus on your ideas, not learning complex tools.
+                Clean, distraction-free design that gets out of your way. Focus
+                on your ideas, not learning complex tools.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -151,7 +167,9 @@ const Landing = () => {
       {/* Pricing Section */}
       <section className="container mx-auto px-6 py-20">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold mb-4">Simple, transparent pricing</h2>
+          <h2 className="text-3xl font-bold mb-4">
+            Simple, transparent pricing
+          </h2>
           <p className="text-lg text-muted-foreground">
             Start free and upgrade when you're ready for more features.
           </p>
@@ -162,7 +180,10 @@ const Landing = () => {
             <CardHeader>
               <CardTitle className="text-2xl">Free</CardTitle>
               <CardDescription className="text-3xl font-bold text-foreground">
-                $0 <span className="text-base font-normal text-muted-foreground">forever</span>
+                $0{" "}
+                <span className="text-base font-normal text-muted-foreground">
+                  forever
+                </span>
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -201,7 +222,10 @@ const Landing = () => {
             <CardHeader>
               <CardTitle className="text-2xl">Pro</CardTitle>
               <CardDescription className="text-3xl font-bold text-foreground">
-                $9 <span className="text-base font-normal text-muted-foreground">per month</span>
+                $9{" "}
+                <span className="text-base font-normal text-muted-foreground">
+                  per month
+                </span>
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -228,9 +252,7 @@ const Landing = () => {
                 </li>
               </ul>
               <Link to="/signup" className="w-full">
-                <Button className="w-full">
-                  Start Pro Trial
-                </Button>
+                <Button className="w-full">Start Pro Trial</Button>
               </Link>
             </CardContent>
           </Card>
@@ -240,9 +262,12 @@ const Landing = () => {
       {/* CTA Section */}
       <section className="bg-primary/5 py-20">
         <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to organize your thoughts?</h2>
+          <h2 className="text-3xl font-bold mb-4">
+            Ready to organize your thoughts?
+          </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of users who have transformed the way they capture and organize ideas.
+            Join thousands of users who have transformed the way they capture
+            and organize ideas.
           </p>
           <div className="flex items-center justify-center space-x-4">
             <Link to="/app">
@@ -268,9 +293,15 @@ const Landing = () => {
               <span className="font-semibold">Whiteboard Notes</span>
             </div>
             <div className="flex items-center space-x-6 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-              <a href="#" className="hover:text-foreground transition-colors">Support</a>
+              <a href="#" className="hover:text-foreground transition-colors">
+                Privacy
+              </a>
+              <a href="#" className="hover:text-foreground transition-colors">
+                Terms
+              </a>
+              <a href="#" className="hover:text-foreground transition-colors">
+                Support
+              </a>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">

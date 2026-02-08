@@ -1,20 +1,32 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { 
-  ArrowLeft, 
-  User, 
-  Bell, 
-  Palette, 
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  ArrowLeft,
+  User,
+  Bell,
+  Palette,
   Database,
   Shield,
   CreditCard,
@@ -25,42 +37,42 @@ import {
   Download,
   Moon,
   Sun,
-  Monitor
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+  Monitor,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [profile, setProfile] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    avatar: '/placeholder.svg',
-    bio: 'Product designer passionate about visual thinking and organization.',
-    location: 'San Francisco, CA',
-    website: 'https://johndoe.com'
+    name: "John Doe",
+    email: "john.doe@example.com",
+    avatar: "/placeholder.svg",
+    bio: "Product designer passionate about visual thinking and organization.",
+    location: "San Francisco, CA",
+    website: "https://johndoe.com",
   });
 
   const [preferences, setPreferences] = useState({
-    theme: 'system',
+    theme: "system",
     notifications: {
       email: true,
       push: false,
       marketing: true,
-      updates: true
+      updates: true,
     },
     canvas: {
       autoSave: true,
       snapToGrid: false,
       showZoom: true,
-      defaultZoom: 100
+      defaultZoom: 100,
     },
     privacy: {
       profileVisible: true,
       activityVisible: false,
-      searchable: true
-    }
+      searchable: true,
+    },
   });
 
   const handleSave = () => {
@@ -73,16 +85,20 @@ const Settings = () => {
   const handleExportData = () => {
     toast({
       title: "Export started",
-      description: "Your data export will be ready shortly. We'll send you an email when it's complete.",
+      description:
+        "Your data export will be ready shortly. We'll send you an email when it's complete.",
     });
   };
 
   const handleDeleteAccount = () => {
-    const confirmed = confirm('Are you sure you want to delete your account? This action cannot be undone.');
+    const confirmed = confirm(
+      "Are you sure you want to delete your account? This action cannot be undone.",
+    );
     if (confirmed) {
       toast({
         title: "Account deletion requested",
-        description: "We've received your request. Your account will be deleted within 24 hours.",
+        description:
+          "We've received your request. Your account will be deleted within 24 hours.",
         variant: "destructive",
       });
     }
@@ -93,7 +109,7 @@ const Settings = () => {
       title: "Logged out",
       description: "You have been successfully logged out.",
     });
-    navigate('/');
+    navigate("/");
   };
 
   return (
@@ -103,10 +119,10 @@ const Settings = () => {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => navigate('/app')}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/app")}
                 className="flex items-center space-x-2"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -125,23 +141,38 @@ const Settings = () => {
       <div className="container mx-auto px-6 py-8 max-w-4xl">
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid grid-cols-5 w-full lg:w-auto">
-            <TabsTrigger value="profile" className="flex items-center space-x-2">
+            <TabsTrigger
+              value="profile"
+              className="flex items-center space-x-2"
+            >
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">Profile</span>
             </TabsTrigger>
-            <TabsTrigger value="preferences" className="flex items-center space-x-2">
+            <TabsTrigger
+              value="preferences"
+              className="flex items-center space-x-2"
+            >
               <Palette className="h-4 w-4" />
               <span className="hidden sm:inline">Preferences</span>
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center space-x-2">
+            <TabsTrigger
+              value="notifications"
+              className="flex items-center space-x-2"
+            >
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Notifications</span>
             </TabsTrigger>
-            <TabsTrigger value="privacy" className="flex items-center space-x-2">
+            <TabsTrigger
+              value="privacy"
+              className="flex items-center space-x-2"
+            >
               <Shield className="h-4 w-4" />
               <span className="hidden sm:inline">Privacy</span>
             </TabsTrigger>
-            <TabsTrigger value="account" className="flex items-center space-x-2">
+            <TabsTrigger
+              value="account"
+              className="flex items-center space-x-2"
+            >
               <Database className="h-4 w-4" />
               <span className="hidden sm:inline">Account</span>
             </TabsTrigger>
@@ -165,7 +196,10 @@ const Settings = () => {
                   <Avatar className="h-24 w-24">
                     <AvatarImage src={profile.avatar} alt="Profile" />
                     <AvatarFallback className="text-lg">
-                      {profile.name.split(' ').map(n => n[0]).join('')}
+                      {profile.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="space-y-2">
@@ -188,7 +222,12 @@ const Settings = () => {
                     <Input
                       id="name"
                       value={profile.name}
-                      onChange={(e) => setProfile(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) =>
+                        setProfile((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -197,7 +236,12 @@ const Settings = () => {
                       id="email"
                       type="email"
                       value={profile.email}
-                      onChange={(e) => setProfile(prev => ({ ...prev, email: e.target.value }))}
+                      onChange={(e) =>
+                        setProfile((prev) => ({
+                          ...prev,
+                          email: e.target.value,
+                        }))
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -205,7 +249,12 @@ const Settings = () => {
                     <Input
                       id="location"
                       value={profile.location}
-                      onChange={(e) => setProfile(prev => ({ ...prev, location: e.target.value }))}
+                      onChange={(e) =>
+                        setProfile((prev) => ({
+                          ...prev,
+                          location: e.target.value,
+                        }))
+                      }
                       placeholder="City, Country"
                     />
                   </div>
@@ -214,7 +263,12 @@ const Settings = () => {
                     <Input
                       id="website"
                       value={profile.website}
-                      onChange={(e) => setProfile(prev => ({ ...prev, website: e.target.value }))}
+                      onChange={(e) =>
+                        setProfile((prev) => ({
+                          ...prev,
+                          website: e.target.value,
+                        }))
+                      }
                       placeholder="https://yourwebsite.com"
                     />
                   </div>
@@ -225,7 +279,9 @@ const Settings = () => {
                   <textarea
                     id="bio"
                     value={profile.bio}
-                    onChange={(e) => setProfile(prev => ({ ...prev, bio: e.target.value }))}
+                    onChange={(e) =>
+                      setProfile((prev) => ({ ...prev, bio: e.target.value }))
+                    }
                     className="w-full min-h-[100px] p-3 border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="Tell us about yourself..."
                   />
@@ -258,9 +314,12 @@ const Settings = () => {
                         Choose your preferred color scheme
                       </p>
                     </div>
-                    <Select value={preferences.theme} onValueChange={(value) => 
-                      setPreferences(prev => ({ ...prev, theme: value }))
-                    }>
+                    <Select
+                      value={preferences.theme}
+                      onValueChange={(value) =>
+                        setPreferences((prev) => ({ ...prev, theme: value }))
+                      }
+                    >
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>
@@ -306,10 +365,10 @@ const Settings = () => {
                     </div>
                     <Switch
                       checked={preferences.canvas.autoSave}
-                      onCheckedChange={(checked) => 
-                        setPreferences(prev => ({ 
-                          ...prev, 
-                          canvas: { ...prev.canvas, autoSave: checked }
+                      onCheckedChange={(checked) =>
+                        setPreferences((prev) => ({
+                          ...prev,
+                          canvas: { ...prev.canvas, autoSave: checked },
                         }))
                       }
                     />
@@ -324,10 +383,10 @@ const Settings = () => {
                     </div>
                     <Switch
                       checked={preferences.canvas.snapToGrid}
-                      onCheckedChange={(checked) => 
-                        setPreferences(prev => ({ 
-                          ...prev, 
-                          canvas: { ...prev.canvas, snapToGrid: checked }
+                      onCheckedChange={(checked) =>
+                        setPreferences((prev) => ({
+                          ...prev,
+                          canvas: { ...prev.canvas, snapToGrid: checked },
                         }))
                       }
                     />
@@ -342,10 +401,10 @@ const Settings = () => {
                     </div>
                     <Switch
                       checked={preferences.canvas.showZoom}
-                      onCheckedChange={(checked) => 
-                        setPreferences(prev => ({ 
-                          ...prev, 
-                          canvas: { ...prev.canvas, showZoom: checked }
+                      onCheckedChange={(checked) =>
+                        setPreferences((prev) => ({
+                          ...prev,
+                          canvas: { ...prev.canvas, showZoom: checked },
                         }))
                       }
                     />
@@ -364,7 +423,8 @@ const Settings = () => {
                   <span>Notification Preferences</span>
                 </CardTitle>
                 <CardDescription>
-                  Choose how you want to be notified about updates and activities.
+                  Choose how you want to be notified about updates and
+                  activities.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -377,10 +437,13 @@ const Settings = () => {
                   </div>
                   <Switch
                     checked={preferences.notifications.email}
-                    onCheckedChange={(checked) => 
-                      setPreferences(prev => ({ 
-                        ...prev, 
-                        notifications: { ...prev.notifications, email: checked }
+                    onCheckedChange={(checked) =>
+                      setPreferences((prev) => ({
+                        ...prev,
+                        notifications: {
+                          ...prev.notifications,
+                          email: checked,
+                        },
                       }))
                     }
                   />
@@ -395,10 +458,10 @@ const Settings = () => {
                   </div>
                   <Switch
                     checked={preferences.notifications.push}
-                    onCheckedChange={(checked) => 
-                      setPreferences(prev => ({ 
-                        ...prev, 
-                        notifications: { ...prev.notifications, push: checked }
+                    onCheckedChange={(checked) =>
+                      setPreferences((prev) => ({
+                        ...prev,
+                        notifications: { ...prev.notifications, push: checked },
                       }))
                     }
                   />
@@ -413,10 +476,13 @@ const Settings = () => {
                   </div>
                   <Switch
                     checked={preferences.notifications.updates}
-                    onCheckedChange={(checked) => 
-                      setPreferences(prev => ({ 
-                        ...prev, 
-                        notifications: { ...prev.notifications, updates: checked }
+                    onCheckedChange={(checked) =>
+                      setPreferences((prev) => ({
+                        ...prev,
+                        notifications: {
+                          ...prev.notifications,
+                          updates: checked,
+                        },
                       }))
                     }
                   />
@@ -431,10 +497,13 @@ const Settings = () => {
                   </div>
                   <Switch
                     checked={preferences.notifications.marketing}
-                    onCheckedChange={(checked) => 
-                      setPreferences(prev => ({ 
-                        ...prev, 
-                        notifications: { ...prev.notifications, marketing: checked }
+                    onCheckedChange={(checked) =>
+                      setPreferences((prev) => ({
+                        ...prev,
+                        notifications: {
+                          ...prev.notifications,
+                          marketing: checked,
+                        },
                       }))
                     }
                   />
@@ -465,10 +534,10 @@ const Settings = () => {
                   </div>
                   <Switch
                     checked={preferences.privacy.profileVisible}
-                    onCheckedChange={(checked) => 
-                      setPreferences(prev => ({ 
-                        ...prev, 
-                        privacy: { ...prev.privacy, profileVisible: checked }
+                    onCheckedChange={(checked) =>
+                      setPreferences((prev) => ({
+                        ...prev,
+                        privacy: { ...prev.privacy, profileVisible: checked },
                       }))
                     }
                   />
@@ -483,10 +552,10 @@ const Settings = () => {
                   </div>
                   <Switch
                     checked={preferences.privacy.activityVisible}
-                    onCheckedChange={(checked) => 
-                      setPreferences(prev => ({ 
-                        ...prev, 
-                        privacy: { ...prev.privacy, activityVisible: checked }
+                    onCheckedChange={(checked) =>
+                      setPreferences((prev) => ({
+                        ...prev,
+                        privacy: { ...prev.privacy, activityVisible: checked },
                       }))
                     }
                   />
@@ -501,10 +570,10 @@ const Settings = () => {
                   </div>
                   <Switch
                     checked={preferences.privacy.searchable}
-                    onCheckedChange={(checked) => 
-                      setPreferences(prev => ({ 
-                        ...prev, 
-                        privacy: { ...prev.privacy, searchable: checked }
+                    onCheckedChange={(checked) =>
+                      setPreferences((prev) => ({
+                        ...prev,
+                        privacy: { ...prev.privacy, searchable: checked },
                       }))
                     }
                   />
@@ -524,7 +593,9 @@ const Settings = () => {
                   </div>
 
                   <div>
-                    <Label className="text-base">Two-factor authentication</Label>
+                    <Label className="text-base">
+                      Two-factor authentication
+                    </Label>
                     <p className="text-sm text-muted-foreground mb-3">
                       Add an extra layer of security to your account
                     </p>
@@ -587,7 +658,11 @@ const Settings = () => {
                         Download all your notes and collections
                       </p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={handleExportData}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportData}
+                    >
                       <Download className="h-4 w-4 mr-2" />
                       Export
                     </Button>
@@ -597,12 +672,14 @@ const Settings = () => {
 
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-base text-destructive">Danger Zone</Label>
+                      <Label className="text-base text-destructive">
+                        Danger Zone
+                      </Label>
                       <p className="text-sm text-muted-foreground mb-3">
                         Permanently delete your account and all associated data.
                       </p>
-                      <Button 
-                        variant="destructive" 
+                      <Button
+                        variant="destructive"
                         size="sm"
                         onClick={handleDeleteAccount}
                       >
@@ -632,7 +709,11 @@ const Settings = () => {
                   <Button variant="outline" className="w-full justify-start">
                     Contact Support
                   </Button>
-                  <Button variant="outline" className="w-full justify-start" onClick={handleLogout}>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={handleLogout}
+                  >
                     <LogOut className="h-4 w-4 mr-2" />
                     Sign Out
                   </Button>
