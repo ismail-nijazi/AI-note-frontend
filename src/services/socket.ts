@@ -84,6 +84,13 @@ class WebSocketService {
     }
   }
 
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+  }
+
   private scheduleReconnect() {
     if (!WS_ENABLED) return;
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts++), 15000);

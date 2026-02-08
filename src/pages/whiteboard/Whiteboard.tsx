@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { Canvas } from "@/components/Canvas";
+import { useEffect, useState } from "react";
+import { Canvas } from "@/components/canvas/Canvas";
 import { LeftSidebar } from "@/components/sidebar/LeftSidebar";
-import { RightSidebarChat } from "@/components/sidebar/RightSidebarChat";
 import { GlobalToolbar } from "@/components/GlobalToolbar";
 import { useWorkspaceStore } from "@/state/useWorkspaceStore";
 import { useAIStore } from "@/state/useAIStore";
@@ -16,7 +15,7 @@ interface ToolbarCallbacks {
   [key: string]: () => void;
 }
 
-const Index = () => {
+const Whiteboard = () => {
   const [toolbarCallbacks, setToolbarCallbacks] = useState<ToolbarCallbacks>(
     {},
   );
@@ -38,8 +37,6 @@ const Index = () => {
 
   const {
     rightSidebarOpen,
-    rightSidebarWidth,
-    setRightSidebarWidth,
     toggleRightSidebar,
     loadFromStorage: loadAI,
   } = useAIStore();
@@ -235,4 +232,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default Whiteboard;

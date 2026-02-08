@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import Index from "./pages/whiteboard/Index";
+import Whiteboard from "./pages/whiteboard/Whiteboard";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import AuthGuard from "./components/AuthGuard";
@@ -24,8 +24,8 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/app" element={<Index />} />
-            <Route path="/notes/:noteId" element={<Index />} />
+            <Route path="/app" element={<Whiteboard />} />
+            <Route path="/notes/:noteId" element={<Whiteboard />} />
             <Route path="/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
