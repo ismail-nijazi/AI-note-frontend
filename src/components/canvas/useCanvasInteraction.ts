@@ -17,6 +17,15 @@ interface UseCanvasInteractionProps {
   ) => void;
 }
 
+type WheelInputEvent = {
+  deltaY: number;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  clientX: number;
+  clientY: number;
+  preventDefault: () => void;
+};
+
 /**
  * A custom React hook for managing canvas interactions such as panning, zooming,
  * adding new note boxes, and handling keyboard shortcuts for deletion.
@@ -31,7 +40,6 @@ interface UseCanvasInteractionProps {
  * @returns {(e: React.MouseEvent) => void} return.handleMouseDown - Event handler for mouse-down events on the canvas.
  * @returns {(e: React.MouseEvent) => void} return.handleMouseMove - Event handler for mouse-move events on the canvas.
  * @returns {() => void} return.handleMouseUp - Event handler for mouse-up events on the canvas.
- * @returns {(e: React.WheelEvent) => void} return.handleWheel - Event handler for wheel events on the canvas (for zooming/panning).
  * @returns {(screenX: number, screenY: number) => {x: number, y: number}} return.screenToCanvas - Function to convert screen coordinates to canvas coordinates.
  */
 export const useCanvasInteraction = ({
@@ -64,15 +72,27 @@ export const useCanvasInteraction = ({
   // Convert screen coordinates to canvas coordinates
   const screenToCanvas = useCallback(
     (screenX: number, screenY: number) => {
-      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      const canvasEl = canvasRef.current;
+      const canvasRect = canvasEl?.getBoundingClientRect();
       if (!canvasRect) return { x: screenX, y: screenY };
+
+      const scrollLeft = canvasEl?.scrollLeft ?? 0;
+      const scrollTop = canvasEl?.scrollTop ?? 0;
+      const originX = Number(canvasEl?.dataset?.canvasOriginX || 0);
+      const originY = Number(canvasEl?.dataset?.canvasOriginY || 0);
 
       return {
         x:
-          (screenX - canvasRect.left - canvasTransform.x) /
+          (screenX -
+            canvasRect.left +
+            scrollLeft -
+            (originX + canvasTransform.x)) /
           canvasTransform.scale,
         y:
-          (screenY - canvasRect.top - canvasTransform.y) /
+          (screenY -
+            canvasRect.top +
+            scrollTop -
+            (originY + canvasTransform.y)) /
           canvasTransform.scale,
       };
     },
@@ -86,7 +106,33 @@ export const useCanvasInteraction = ({
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0 && e.target === canvasRef.current) {
+    const canvasEl = canvasRef.current;
+
+    if (canvasEl) {
+      const hasVerticalScrollbar = canvasEl.offsetWidth > canvasEl.clientWidth;
+      const hasHorizontalScrollbar =
+        canvasEl.offsetHeight > canvasEl.clientHeight;
+
+      if (hasVerticalScrollbar || hasHorizontalScrollbar) {
+        const rect = canvasEl.getBoundingClientRect();
+        const onVerticalScrollbar =
+          hasVerticalScrollbar && e.clientX >= rect.left + canvasEl.clientWidth;
+        const onHorizontalScrollbar =
+          hasHorizontalScrollbar &&
+          e.clientY >= rect.top + canvasEl.clientHeight;
+
+        if (onVerticalScrollbar || onHorizontalScrollbar) {
+          return;
+        }
+      }
+    }
+
+    const target = e.target as HTMLElement;
+    const clickedCanvasBackground =
+      e.target === canvasRef.current ||
+      target?.dataset?.canvasSurface === "true";
+
+    if (e.button === 0 && clickedCanvasBackground) {
       // Clear selection and unfocus any editing text box when clicking on empty canvas
       selectNoteBox(null);
       setEditingBox(null);
@@ -131,44 +177,82 @@ export const useCanvasInteraction = ({
     setIsPanning(false);
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    // If a note box is editing, don't zoom - allow normal text scrolling
-    if (editingBoxId) {
-      return; // Let the text editor handle scrolling
-    }
+  const handleWheel = useCallback(
+    (e: WheelInputEvent) => {
+      const hasActiveNoteBox = !!editingBoxId || !!selectedBoxId;
 
-    // Always zoom with wheel, pan only when holding modifier keys
-    if (e.ctrlKey || e.metaKey || e.shiftKey) {
-      // Pan with modifier keys + wheel
-      e.preventDefault();
-      const deltaX = e.deltaX * 2;
-      const deltaY = e.deltaY * 2;
+      // Explicit zoom shortcut that should not trigger browser page zoom.
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newScale = Math.max(
+          0.25,
+          Math.min(3, canvasTransform.scale * delta),
+        );
 
-      updateCanvasTransform({
-        x: canvasTransform.x - deltaX,
-        y: canvasTransform.y - deltaY,
-      });
-    } else {
-      // Zoom without modifier keys
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      const newScale = Math.max(
-        0.25,
-        Math.min(5, canvasTransform.scale * delta),
-      );
+        const rect = canvasRef.current?.getBoundingClientRect();
+        const canvasEl = canvasRef.current;
+        if (!rect || !canvasEl) {
+          return;
+        }
 
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (rect) {
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
+        const scrollLeft = canvasEl.scrollLeft;
+        const scrollTop = canvasEl.scrollTop;
+        const originX = Number(canvasEl.dataset.canvasOriginX || 0);
+        const originY = Number(canvasEl.dataset.canvasOriginY || 0);
+        const anchorX = mouseX + scrollLeft - originX;
+        const anchorY = mouseY + scrollTop - originY;
 
         const scaleDiff = newScale - canvasTransform.scale;
         const newX =
           canvasTransform.x -
-          (mouseX - canvasTransform.x) * (scaleDiff / canvasTransform.scale);
+          (anchorX - canvasTransform.x) * (scaleDiff / canvasTransform.scale);
         const newY =
           canvasTransform.y -
-          (mouseY - canvasTransform.y) * (scaleDiff / canvasTransform.scale);
+          (anchorY - canvasTransform.y) * (scaleDiff / canvasTransform.scale);
+
+        updateCanvasTransform({
+          scale: newScale,
+          x: newX,
+          y: newY,
+        });
+        return;
+      }
+
+      // Active note box: let wheel drive native scrollbar movement.
+      if (hasActiveNoteBox) {
+        return;
+      }
+
+      // No active note box: wheel zooms.
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.max(
+        0.25,
+        Math.min(3, canvasTransform.scale * delta),
+      );
+
+      const rect = canvasRef.current?.getBoundingClientRect();
+      const canvasEl = canvasRef.current;
+      if (rect && canvasEl) {
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const scrollLeft = canvasEl.scrollLeft;
+        const scrollTop = canvasEl.scrollTop;
+        const originX = Number(canvasEl.dataset.canvasOriginX || 0);
+        const originY = Number(canvasEl.dataset.canvasOriginY || 0);
+        const anchorX = mouseX + scrollLeft - originX;
+        const anchorY = mouseY + scrollTop - originY;
+
+        const scaleDiff = newScale - canvasTransform.scale;
+        const newX =
+          canvasTransform.x -
+          (anchorX - canvasTransform.x) * (scaleDiff / canvasTransform.scale);
+        const newY =
+          canvasTransform.y -
+          (anchorY - canvasTransform.y) * (scaleDiff / canvasTransform.scale);
 
         updateCanvasTransform({
           scale: newScale,
@@ -176,12 +260,59 @@ export const useCanvasInteraction = ({
           y: newY,
         });
       }
+    },
+    [
+      canvasRef,
+      canvasTransform.scale,
+      canvasTransform.x,
+      canvasTransform.y,
+      editingBoxId,
+      selectedBoxId,
+      updateCanvasTransform,
+    ],
+  );
+
+  useEffect(() => {
+    const canvasEl = canvasRef.current;
+    if (!canvasEl) {
+      return;
     }
-  };
+
+    const onWheel = (event: WheelEvent) => {
+      handleWheel({
+        deltaY: event.deltaY,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        preventDefault: () => {
+          if (event.cancelable) {
+            event.preventDefault();
+          }
+        },
+      });
+    };
+
+    canvasEl.addEventListener("wheel", onWheel, {
+      passive: false,
+    });
+
+    return () => {
+      canvasEl.removeEventListener("wheel", onWheel);
+    };
+  }, [canvasRef, handleWheel]);
 
   const { noteBoxes } = useBoardStore(); // To get latest state for deletion logic
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        selectNoteBox(null);
+        setEditingBox(null);
+        setToolbarCallbacks({});
+        return;
+      }
+
       if (e.ctrlKey || e.metaKey) {
         if (e.key === "z" && !e.shiftKey) {
           e.preventDefault();
@@ -189,6 +320,16 @@ export const useCanvasInteraction = ({
         } else if (e.key === "y" || (e.key === "z" && e.shiftKey)) {
           e.preventDefault();
           // Redo is handled by toolbar
+        } else if (e.key === "0") {
+          e.preventDefault();
+          updateCanvasTransform({
+            scale: 1,
+            x: 0,
+            y: 0,
+          });
+          selectNoteBox(null);
+          setEditingBox(null);
+          setToolbarCallbacks({});
         }
       } else if (
         (e.key === "Delete" || e.key === "Backspace") &&
@@ -218,7 +359,13 @@ export const useCanvasInteraction = ({
         }
       }
     },
-    [selectedBoxId, noteBoxes],
+    [
+      noteBoxes,
+      selectedBoxId,
+      selectNoteBox,
+      setEditingBox,
+      updateCanvasTransform,
+    ],
   );
 
   useEffect(() => {
@@ -232,7 +379,6 @@ export const useCanvasInteraction = ({
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
-    handleWheel,
     screenToCanvas,
     toolbarCallbacks,
     setToolbarCallbacks,
