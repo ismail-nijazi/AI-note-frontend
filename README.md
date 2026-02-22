@@ -60,6 +60,16 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## AI Feature Flag
+
+The AI sidebar is gated by an environment variable during refactoring:
+
+```sh
+VITE_AI_ENABLED=true
+```
+
+If unset, AI remains disabled by default.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/0d029fe0-98b7-4697-bf2e-fc15cadf8016) and click on Share -> Publish.

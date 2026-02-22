@@ -7,7 +7,6 @@ interface ChatMessageBubbleProps {
   message: ChatMessage;
   onCopy: (content: string) => void;
   onInsert: (content: string) => void;
-  onApplyEdits?: (content: string) => void;
   isStreaming?: boolean;
 }
 
@@ -15,7 +14,6 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
   message,
   onCopy,
   onInsert,
-  onApplyEdits: _onApplyEdits,
   isStreaming = false,
 }) => {
   const isUser = message.role === "user";

@@ -11,3 +11,6 @@ export const apiConfig = {
 export const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8001/ws";
 export const WS_ENABLED =
   (import.meta.env.VITE_WS_ENABLED || "true") === "true";
+
+export const AI_ENABLED =
+  (import.meta.env.VITE_AI_ENABLED || "false") === "true";

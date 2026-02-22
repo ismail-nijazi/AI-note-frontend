@@ -9,6 +9,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useBoardStore } from "@/state/useBoardStore";
 import { apiService } from "@/services/api";
 import type { Box } from "@/state/useWorkspaceStore";
+import { RightSidebarChat } from "@/components/sidebar/RightSidebarChat";
+import { AI_ENABLED } from "@/config/api";
 import NoActiveNote from "./NoActiveNote";
 
 interface ToolbarCallbacks {
@@ -37,6 +39,8 @@ const Whiteboard = () => {
 
   const {
     rightSidebarOpen,
+    rightSidebarWidth,
+    setRightSidebarWidth,
     toggleRightSidebar,
     loadFromStorage: loadAI,
   } = useAIStore();
@@ -157,6 +161,9 @@ const Whiteboard = () => {
           ) as HTMLInputElement;
           searchInput?.focus();
         } else if (e.key === "/") {
+          if (!AI_ENABLED) {
+            return;
+          }
           e.preventDefault();
           toggleRightSidebar();
         }
@@ -209,24 +216,20 @@ const Whiteboard = () => {
           )}
         </div>
 
-        {/* Right Sidebar */}
-        {/* <div
-					className={`transition-all duration-300 ease-out ${
-						rightSidebarOpen
-							? "w-auto"
-							: "w-0"
-					} overflow-hidden`}>
-					{rightSidebarOpen && (
-						<RightSidebarChat
-							width={
-								rightSidebarWidth
-							}
-							onResize={
-								setRightSidebarWidth
-							}
-						/>
-					)}
-				</div> */}
+        {AI_ENABLED && (
+          <div
+            className={`transition-all duration-300 ease-out ${
+              rightSidebarOpen ? "w-auto" : "w-0"
+            } overflow-hidden`}
+          >
+            {rightSidebarOpen && (
+              <RightSidebarChat
+                width={rightSidebarWidth}
+                onResize={setRightSidebarWidth}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

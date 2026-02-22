@@ -9,9 +9,10 @@ interface ChatMessagesProps {
   chatHistory: ChatMessage[];
   streamingMessage: string;
   isGenerating: boolean;
+  aiStatus?: "available" | "error" | "unknown";
+  errorMessage?: string | null;
   onCopy: (content: string) => void;
   onInsert: (content: string) => void;
-  onApplyEdits: (content: string) => void;
   messagesEndRef: React.RefObject<HTMLDivElement>;
   scrollContainerRef: React.RefObject<HTMLDivElement>;
 }
@@ -21,9 +22,10 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   chatHistory,
   streamingMessage,
   isGenerating,
+  aiStatus = "unknown",
+  errorMessage = null,
   onCopy,
   onInsert,
-  onApplyEdits,
   messagesEndRef,
   scrollContainerRef,
 }) => (
@@ -37,17 +39,23 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       <div className="text-center text-muted-foreground text-sm py-8">
         <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
         <p>Start a conversation</p>
-        <p className="text-xs mt-1">Use quick actions or ask anything</p>
+        <p className="text-xs mt-1">
+          Use quick actions, context suggestions, or ask anything
+        </p>
       </div>
     ) : (
       <div className="space-y-4">
+        {aiStatus === "error" && errorMessage && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+            {errorMessage}
+          </div>
+        )}
         {chatHistory.map((message) => (
           <ChatMessageBubble
             key={message.id}
             message={message}
             onCopy={onCopy}
             onInsert={onInsert}
-            onApplyEdits={onApplyEdits}
           />
         ))}
         {isGenerating && !streamingMessage && (
@@ -72,7 +80,6 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             }}
             onCopy={onCopy}
             onInsert={onInsert}
-            onApplyEdits={onApplyEdits}
             isStreaming
           />
         )}

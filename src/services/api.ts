@@ -91,6 +91,7 @@ class ApiService {
       maxTokens?: number;
       temperature?: number;
       stream?: boolean;
+      includeContext?: boolean;
     },
   ): Promise<Response> {
     // Transform messages to backend format: only role and content, filter empty content
@@ -122,7 +123,7 @@ class ApiService {
       body: JSON.stringify({
         messages: transformedMessages,
         context,
-        includeContext: true,
+        includeContext: options?.includeContext ?? true,
         model: options?.model || DEFAULT_MODEL,
         maxTokens: options?.maxTokens || 4000,
         temperature: options?.temperature || 0.7,
